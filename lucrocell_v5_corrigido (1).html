@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LucroCell — Sistema de Controladoria v5</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+:root{
+  --bg:#f0f3fa;--bg2:#fff;--bg3:#f5f7fd;--bg4:#e8ecf7;
+  --text:#0f172a;--text2:#4a5a7a;--text3:#8898bc;
+  --border:#dde3f0;--border2:#c5cfec;
+  --accent:#2563eb;--acc-lt:#eff4ff;--acc-dk:#1d4ed8;
+  --green:#15803d;--green-bg:#f0fdf4;--green-bd:#86efac;
+  --red:#dc2626;--red-bg:#fef2f2;--red-bd:#fca5a5;
+  --warn:#b45309;--warn-bg:#fffbeb;--warn-bd:#fcd34d;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-bd:#c4b5fd;
+  --radius:16px;--radius-sm:9px;--radius-xs:6px;
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.05);
+  --shadow-md:0 4px 16px rgba(15,23,42,.1),0 0 0 1px rgba(15,23,42,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* HEADER */
+.hdr{background:var(--bg2);border-bottom:1.5px solid var(--border);padding:0 1.75rem;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(15,23,42,.05);}
+.logo{display:flex;align-items:center;gap:11px;}
+.logo-ico{width:36px;height:36px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(37,99,235,.3);}
+.logo-ico svg{width:19px;height:19px;}
+.logo-txt{font-size:18px;font-weight:800;letter-spacing:-.02em;}.logo-txt span{color:var(--accent);}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.hdr-clock{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--accent);background:var(--acc-lt);border:1.5px solid #bfdbfe;padding:5px 12px;border-radius:8px;}
+.hdr-date{font-size:12px;color:var(--text2);font-weight:500;}
+.fb-indicator{font-size:11px;padding:4px 11px;border-radius:20px;font-weight:700;display:none;letter-spacing:.03em;}
+.fb-indicator.on{display:inline-block;background:var(--green-bg);color:var(--green);border:1.5px solid var(--green-bd);}
+.fb-indicator.off{display:inline-block;background:var(--red-bg);color:var(--red);border:1.5px solid var(--red-bd);}
+
+/* TOAST */
+.toast-wrap{position:fixed;top:72px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--text);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:toastIn .25s ease;display:flex;align-items:center;gap:8px;}
+.toast.green{background:#15803d;}
+.toast.red{background:#dc2626;}
+.toast.blue{background:#2563eb;}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* NOTIF */
+.notif{background:linear-gradient(90deg,var(--accent),var(--acc-dk));color:#fff;padding:10px 1.75rem;font-size:14px;font-weight:500;display:none;align-items:center;justify-content:space-between;gap:12px;}
+.notif.show{display:flex;}
+.notif-btn{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;padding:5px 14px;border-radius:7px;cursor:pointer;font-size:13px;font-family:'Outfit',sans-serif;font-weight:600;}
+
+/* LAYOUT */
+.page{max-width:1220px;margin:0 auto;padding:1.5rem;}
+.tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border);overflow-x:auto;}
+.tab-btn{padding:10px 20px;border:none;background:none;color:var(--text2);font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;transition:all .18s;white-space:nowrap;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;}
+.pane{display:none;}.pane.active{display:block;animation:fadeUp .22s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* HELPERS */
+.sec-lbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.ok{color:var(--green);}.bad{color:var(--red);}.warn-c{color:var(--warn);}.muted{color:var(--text2);}
+
+/* CARDS */
+.card{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--shadow);}
+.card-title{font-size:15px;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1rem;}
+@media(max-width:760px){.two-col{grid-template-columns:1fr;}}
+
+/* FORM */
+.field{margin-bottom:10px;}.field:last-child{margin-bottom:0;}
+label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;}
+.fi{width:100%;padding:8px 12px;font-size:14px;font-family:'JetBrains Mono',monospace;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);transition:border-color .15s,background .15s,box-shadow .15s;}
+.fi[type=text],.fi.sel{font-family:'Outfit',sans-serif;}
+.fi:focus{outline:none;border-color:var(--accent);background:var(--bg2);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.field-note{font-size:11px;color:var(--text3);margin-left:5px;font-weight:400;}
+
+/* PILLS */
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;}
+.pill{display:flex;align-items:center;gap:7px;padding:9px 18px;background:var(--bg2);border:2px solid var(--border);border-radius:50px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);transition:all .18s;user-select:none;}
+.pill:hover{border-color:var(--border2);color:var(--text);}
+.pill .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.pill .pct{font-size:11px;font-family:'JetBrains Mono',monospace;opacity:.7;}
+.pill-add{padding:9px 16px;border:2px dashed var(--border2);border-radius:50px;background:none;color:var(--text2);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;}
+.pill-add:hover{border-color:var(--accent);color:var(--accent);}
+
+/* RESULT BLOCK */
+.res-block{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--shadow);margin-bottom:10px;}
+.rrow{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.rrow:last-child{border-bottom:none;}
+.rrow .rl{color:var(--text2);}.rrow .rv{font-family:'JetBrains Mono',monospace;font-weight:500;}
+.rrow.rtotal{padding-top:10px;font-size:15px;}
+.rrow.rtotal .rl{font-weight:700;color:var(--text);}.rrow.rtotal .rv{font-size:19px;font-weight:700;}
+.verdict{border-radius:var(--radius-sm);padding:11px 15px;font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:flex-start;gap:9px;border:1.5px solid;}
+.verdict.ok{background:var(--green-bg);border-color:var(--green-bd);color:var(--green);}
+.verdict.bad{background:var(--red-bg);border-color:var(--red-bd);color:var(--red);}
+.verdict.wrn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn);}
+.sug{background:var(--acc-lt);border:1.5px solid #bfdbfe;border-radius:var(--radius-sm);padding:12px 15px;margin-bottom:8px;font-size:13px;color:#1d4ed8;}
+
+/* IA */
+.ia-box{background:var(--purple-bg);border:1.5px solid var(--purple-bd);border-radius:var(--radius);padding:1rem 1.25rem;}
+.ia-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.ia-badge{font-size:10px;font-weight:800;background:var(--purple);color:#fff;padding:3px 10px;border-radius:20px;letter-spacing:.05em;}
+.ia-msgs{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:8px;}
+.ia-msg{padding:9px 13px;border-radius:var(--radius-sm);font-size:13px;line-height:1.55;}
+.ia-msg.sys{background:#fff;border:1px solid var(--purple-bd);color:var(--text);}
+.ia-msg.usr{background:var(--purple);color:#fff;align-self:flex-end;max-width:85%;}
+.ia-msg.loading{color:var(--purple);font-style:italic;background:none;border:none;padding:4px 0;}
+.ia-row{display:flex;gap:7px;}
+.ia-inp{flex:1;padding:8px 12px;font-size:13px;font-family:'Outfit',sans-serif;background:#fff;border:1.5px solid var(--purple-bd);border-radius:var(--radius-sm);color:var(--text);}
+.ia-inp:focus{outline:none;border-color:var(--purple);}
+.ia-send{padding:8px 15px;background:var(--purple);border:none;border-radius:var(--radius-sm);color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.ia-send:hover{opacity:.9;}.ia-send:disabled{opacity:.4;cursor:default;}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border:1.5px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:var(--bg4);}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff;}.btn-p:hover{opacity:.9;background:var(--accent);}
+.btn-g{background:var(--green);border-color:var(--green);color:#fff;}.btn-g:hover{opacity:.9;}
+.btn-d{color:var(--red);border-color:var(--red-bd);background:var(--red-bg);}.btn-d:hover{background:#fee2e2;}
+.btn-sm{padding:4px 11px;font-size:12px;border-radius:6px;}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:5px;}
+.btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+@media(max-width:700px){.metrics{grid-template-columns:1fr 1fr;}}
+.met{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;box-shadow:var(--shadow);}
+.met-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;font-weight:700;}
+.met-val{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.met-val.ok{color:var(--green);}.met-val.bad{color:var(--red);}.met-val.blue{color:var(--accent);}
+
+/* CITY TABS */
+.city-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem;}
+.city-tab{padding:7px 18px;border:2px solid var(--border2);border-radius:50px;background:var(--bg2);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;}
+.city-tab:hover{border-color:var(--accent);color:var(--accent);}
+.city-tab.active{color:#fff;font-weight:700;}
+
+/* PAY TABLE */
+.pay-section{margin-bottom:1.5rem;}
+.pay-section-title{font-size:15px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.city-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.tbl-wrap{overflow-x:auto;}
+table.ptbl{width:100%;border-collapse:collapse;font-size:13px;}
+table.ptbl th{text-align:left;padding:9px 14px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--border);background:var(--bg3);}
+table.ptbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:top;}
+.tag-hoje{display:inline-block;font-size:10px;font-weight:800;background:var(--accent);color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;}
+.tag-passado{display:inline-block;font-size:10px;font-weight:700;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);padding:2px 8px;border-radius:10px;margin-left:6px;}
+.tag-futuro{display:inline-block;font-size:10px;font-weight:600;background:var(--bg3);color:var(--text2);padding:2px 8px;border-radius:10px;margin-left:6px;}
+.day-block{padding:12px 15px;}
+.day-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.day-title{font-weight:700;font-size:14px;}
+.day-total{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;}
+.fin-pills-row{display:flex;flex-wrap:wrap;gap:8px;}
+.fin-count-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:20px;padding:4px 12px;}
+.fin-count-name{font-size:12px;font-weight:700;}
+.fin-count-num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;}
+.fin-count-val{font-size:12px;color:var(--text2);}
+.tbl-total-row td{padding:10px 15px;background:var(--bg3);font-weight:700;border-top:2px solid var(--border2)!important;}
+
+/* REPORT */
+.report-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px;}
+.report-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.report-filters select,.report-filters input[type=month]{padding:8px 11px;font-size:13px;font-family:'Outfit',sans-serif;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);}
+.rpt-summary{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border-radius:var(--radius);padding:1.5rem 2rem;margin-bottom:1.25rem;color:#fff;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;box-shadow:0 4px 20px rgba(37,99,235,.25);}
+.rpt-sum-left .rpt-sum-sub{font-size:11px;font-weight:700;opacity:.75;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.rpt-sum-left .rpt-sum-val{font-size:36px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.02em;}
+.rpt-sum-left .rpt-sum-date{font-size:13px;opacity:.75;margin-top:4px;}
+.rpt-sum-right{text-align:right;}
+.rpt-sum-right .rpt-sum-sub{font-size:11px;font-weight:700;opacity:.75;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.rpt-sum-right .rpt-sum-val{font-size:30px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.rpt-sum-right .rpt-sum-meta{font-size:12px;opacity:.7;margin-top:4px;}
+.rpt-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:1rem;overflow:hidden;}
+.rpt-card-hdr{background:var(--bg3);border-bottom:1.5px solid var(--border);padding:11px 17px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;}
+.rpt-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.rpt-tbl th{text-align:left;padding:9px 14px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--border);background:var(--bg3);}
+.rpt-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.rpt-tbl tr:last-child td{border-bottom:none;}
+.rpt-tbl tr.editing-row{background:#fffbeb;}
+.rpt-edit-inp{width:100%;padding:5px 8px;font-size:13px;background:var(--bg2);border:1.5px solid var(--accent);border-radius:6px;color:var(--text);font-family:'Outfit',sans-serif;}
+.rpt-edit-sel{width:100%;padding:5px 8px;font-size:13px;background:var(--bg2);border:1.5px solid var(--accent);border-radius:6px;color:var(--text);}
+.rpt-city-sum{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:.5rem;overflow:hidden;box-shadow:var(--shadow);}
+.rpt-city-sum-hdr{display:flex;align-items:center;padding:12px 16px;gap:10px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.rpt-city-sum-body{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+.rpt-city-sum-cell{padding:12px 16px;border-right:1px solid var(--border);}
+.rpt-city-sum-cell:last-child{border-right:none;}
+.rpt-city-sum-cell .rsc-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.rpt-city-sum-cell .rsc-val{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.fin-tag{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap;margin:1px;}
+
+/* HIST */
+.plist{display:flex;flex-direction:column;gap:10px;}
+.pc{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.4rem;box-shadow:var(--shadow);transition:box-shadow .15s;}
+.pc:hover{box-shadow:var(--shadow-md);}
+.pc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;}
+.pc-name{font-weight:700;font-size:14px;}.pc-fin{font-size:12px;margin-top:2px;font-weight:600;}
+.pc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.pm .pm-l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.pm .pm-v{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;}
+.hist-actions{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;}
+.hist-search{flex:1;min-width:180px;padding:8px 12px;font-size:13px;font-family:'Outfit',sans-serif;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);}
+.hist-search:focus{outline:none;border-color:var(--accent);}
+
+/* CFG */
+.cfg-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--shadow);margin-bottom:12px;}
+.cfg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cfg-name-inp{font-size:15px;font-weight:700;border:none;background:none;padding:0;border-bottom:2px dashed var(--border2);border-radius:0;color:var(--text);font-family:'Outfit',sans-serif;width:180px;}
+.cfg-name-inp:focus{outline:none;border-bottom-color:var(--accent);}
+.cfg-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+@media(max-width:600px){.cfg-row{grid-template-columns:1fr 1fr;}}
+.cfg-inp{padding:8px 11px;font-size:14px;font-family:'JetBrains Mono',monospace;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);width:100%;transition:border-color .15s;}
+.cfg-inp:focus{outline:none;border-color:var(--accent);}
+.cfg-lbl{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px;display:block;}
+.cfg-section{margin-bottom:1.5rem;}
+.cfg-section-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;border-bottom:1.5px solid var(--border);}
+.info-box{background:var(--acc-lt);border:1.5px solid #bfdbfe;border-radius:var(--radius-sm);padding:11px 15px;font-size:12px;color:#1e40af;line-height:1.7;margin-top:10px;}
+.warn-box{background:var(--warn-bg);border:1.5px solid var(--warn-bd);border-radius:var(--radius-sm);padding:11px 15px;font-size:12px;color:var(--warn);line-height:1.7;margin-top:8px;}
+
+/* REG GRID */
+.reg-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;}
+@media(max-width:900px){.reg-grid{grid-template-columns:1fr 1fr;}}
+
+/* PRINT */
+@media print{
+  /* Oculta tudo que não é conteúdo contábil */
+  .hdr,.tabs,.btn-row,.pill-add,.notif,.city-tabs,.report-filters,
+  .btn,.ia-box,.pills,.hist-actions,.toast-wrap,#ia-balanco-box,
+  .rpt-card-hdr button,.no-print,button[onclick],a[onclick]{display:none!important;}
+  /* Cores preservadas */
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  body{background:#fff!important;font-size:10px;color:#000;}
+  .page{max-width:100%;padding:.25rem;}
+  .pane{display:block!important;animation:none!important;}
+
+  /* Cabeçalho de impressão */
+  .print-hdr{display:flex!important;}
+  .print-footer{display:block!important;}
+  .print-hdr-balanco{display:flex!important;}
+
+  /* Cards e tabelas */
+  .rpt-card{break-inside:avoid;margin-bottom:.5rem;box-shadow:none!important;border:1px solid #ddd!important;}
+  .bal-card{break-inside:avoid;margin-bottom:.5rem;box-shadow:none!important;border:1px solid #ddd!important;}
+  .rpt-card-hdr{background:#1e3a5f!important;color:#fff!important;border-radius:0!important;}
+  .bal-card-hdr{background:#1e3a5f!important;color:#fff!important;}
+  .rpt-card-hdr .mono{color:#86efac!important;}
+
+  /* Resumo contábil */
+  .rpt-summary{background:#1e3a5f!important;border-radius:4px!important;padding:1rem 1.25rem!important;margin-bottom:.5rem!important;flex-direction:column!important;gap:.5rem!important;}
+  .bal-banner{background:#1e3a5f!important;border-radius:4px!important;padding:1rem 1.25rem!important;margin-bottom:.5rem!important;}
+
+  /* KPIs do balanço */
+  .bal-kpi-grid{grid-template-columns:repeat(4,1fr)!important;gap:6px!important;margin-bottom:.5rem!important;}
+  /* Grid 3 colunas do resumo consolidado */
+  [style*="grid-template-columns:1fr 1fr 1fr"]{grid-template-columns:1fr 1fr 1fr!important;}
+  [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:repeat(3,1fr)!important;}
+  .bal-kpi{border:1px solid #ddd!important;padding:.5rem .75rem!important;box-shadow:none!important;}
+  .bal-kpi.blue::before{background:#2563eb!important;}
+  .bal-kpi.green::before{background:#15803d!important;}
+  .bal-kpi.orange::before{background:#d97706!important;}
+  .bal-kpi.purple::before{background:#7c3aed!important;}
+
+  /* Métricas */
+  .met{box-shadow:none!important;border:1px solid #ddd!important;}
+  .metrics{grid-template-columns:repeat(4,1fr)!important;}
+
+  /* Tabelas */
+  .rpt-tbl,.bal-tbl,.ptbl{font-size:9px;border-collapse:collapse;}
+  .rpt-tbl th,.bal-tbl th,.ptbl th{background:#f0f3fa!important;border-bottom:1.5px solid #ddd!important;padding:5px 8px!important;font-size:8px!important;}
+  .rpt-tbl td,.bal-tbl td,.ptbl td{padding:5px 8px!important;border-bottom:1px solid #eee!important;}
+  .bal-tbl tfoot td{background:#e8ecf7!important;border-top:1.5px solid #bbb!important;font-size:9px!important;}
+  .rpt-tbl tfoot td{background:#e8ecf7!important;}
+
+  /* Cores preservadas */
+  .ok,.met-val.ok{color:#15803d!important;}
+  /* Tabela de consolidado de financeiras */
+  [style*="grid-template-columns:1fr 1fr 1fr"],[style*="grid-template-columns:repeat(3"]{
+    display:grid!important;
+    grid-template-columns:1fr 1fr 1fr!important;
+  }
+  .bad,.met-val.bad{color:#dc2626!important;}
+  .blue,.met-val.blue{color:#2563eb!important;}
+  .warn-c{color:#b45309!important;}
+  .fin-tag{border:1px solid #ddd!important;background:#f5f7fd!important;}
+  /* Barras de progresso no print */
+  [style*="height:6px"],[style*="height:5px"]{print-color-adjust:exact!important;}
+  .tag-hoje{background:#2563eb!important;color:#fff!important;}
+  .tag-passado{background:#f0fdf4!important;color:#15803d!important;}
+
+  /* Calendário */
+  .bal-week-grid{grid-template-columns:repeat(4,1fr)!important;}
+
+  /* Oculta colunas de ação nas tabelas */
+  .no-print{display:none!important;}
+
+  /* Rodapé de impressão */
+  .print-footer{
+    display:block!important;
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    font-size:8px;
+    color:#64748b;
+    text-align:center;
+    border-top:1px solid #ddd;
+    padding:4px 0;
+    background:#fff;
+  }
+
+  /* Forçar quebra de página antes de cada dia */
+  .rpt-card{page-break-inside:avoid;}
+  .bal-card{page-break-inside:avoid;}
+
+  /* Tabela de financeiras sempre visível */
+  .bal-tbl tfoot tr{background:#e8ecf7!important;}
+  .rpt-tbl tfoot tr{background:#e8ecf7!important;}
+}
+/* Print elements hidden by default */
+.print-hdr{display:none;}
+.print-hdr-balanco{display:none;}
+.print-footer{display:none;}
+
+/* BALANÇO MENSAL */
+.bal-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
+@media(max-width:700px){.bal-kpi-grid{grid-template-columns:1fr 1fr;}}
+.bal-kpi{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.25rem;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.bal-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.bal-kpi.blue::before{background:linear-gradient(90deg,#2563eb,#1d4ed8);}
+.bal-kpi.green::before{background:linear-gradient(90deg,#16a34a,#15803d);}
+.bal-kpi.red::before{background:linear-gradient(90deg,#dc2626,#b91c1c);}
+.bal-kpi.purple::before{background:linear-gradient(90deg,#7c3aed,#6d28d9);}
+.bal-kpi.orange::before{background:linear-gradient(90deg,#d97706,#b45309);}
+.bal-kpi .bk-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.bal-kpi .bk-val{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.bal-kpi .bk-sub{font-size:11px;color:var(--text2);margin-top:4px;}
+.bal-banner{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#2563eb 100%);border-radius:var(--radius);padding:1.75rem 2rem;margin-bottom:1.5rem;color:#fff;position:relative;overflow:hidden;}
+.bal-banner::after{content:'BALANÇO';position:absolute;right:-10px;top:50%;transform:translateY(-50%);font-size:80px;font-weight:900;opacity:.04;letter-spacing:-.04em;white-space:nowrap;}
+.bal-banner-title{font-size:11px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;}
+.bal-banner-mes{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
+.bal-banner-stats{display:flex;gap:2rem;margin-top:1rem;flex-wrap:wrap;}
+.bal-banner-stat .bbs-l{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.08em;}
+.bal-banner-stat .bbs-v{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.bal-section-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px;}
+.bal-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.bal-tbl th{text-align:left;padding:9px 14px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--border);background:var(--bg3);}
+.bal-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);}
+.bal-tbl tr:last-child td{border-bottom:none;}
+.bal-tbl tfoot td{font-weight:700;background:var(--bg4);border-top:2px solid var(--border2);}
+.bal-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:1.25rem;overflow:hidden;}
+.bal-card-hdr{background:var(--bg3);border-bottom:1.5px solid var(--border);padding:11px 17px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center;}
+.bal-city-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0;}
+.bal-city-cell{padding:12px 16px;border-right:1px solid var(--border);}
+.bal-city-cell:last-child{border-right:none;}
+.bal-city-cell .bcc-l{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.bal-city-cell .bcc-v{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.bal-week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:1.5rem;}
+@media(max-width:700px){.bal-week-grid{grid-template-columns:repeat(4,1fr);}}
+.bal-day-cell{background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:10px;text-align:center;}
+.bal-day-cell.has-data{border-color:var(--accent);background:var(--acc-lt);}
+.bal-day-cell .bdc-day{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;}
+.bal-day-cell .bdc-num{font-size:16px;font-weight:800;}
+.bal-day-cell .bdc-val{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;}
+.bal-day-cell .bdc-qt{font-size:10px;color:var(--text2);}
+</style>
+</head>
+<body>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- Rodapé de impressão (visível apenas ao imprimir) -->
+<div class="print-footer" style="display:none;" id="print-footer-bar">
+  LucroCell — Sistema de Controladoria | Emitido em <span id="footer-date"></span> | Confidencial — Uso Interno
+</div>
+
+<div class="notif" id="notif">
+  <span id="notif-msg"></span>
+  <button class="notif-btn" onclick="document.getElementById('notif').classList.remove('show');goTab('pay')">Ver recebimentos</button>
+</div>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="logo-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+      </svg>
+    </div>
+    <div class="logo-txt">Lucro<span>Cell</span></div>
+  </div>
+  <div class="hdr-right">
+    <span class="fb-indicator" id="fb-ind">● Nuvem</span>
+    <div class="hdr-clock" id="hdr-clock">--:--:--</div>
+    <div class="hdr-date" id="hdr-date"></div>
+  </div>
+</header>
+
+<div class="page">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="goTab('calc')">📱 Calculadora</button>
+    <button class="tab-btn" onclick="goTab('pay')">💰 Recebimentos</button>
+    <button class="tab-btn" onclick="goTab('balanco')">📈 Balanço Mensal</button>
+    <button class="tab-btn" onclick="goTab('report')">📊 Relatório Diário</button>
+    <button class="tab-btn" onclick="goTab('hist')">📋 Histórico</button>
+    <button class="tab-btn" onclick="goTab('cfg')">⚙️ Configurações</button>
+  </div>
+
+  <!-- ══ CALCULADORA ══ -->
+  <div id="tab-calc" class="pane active">
+    <p class="sec-lbl">Selecione a financeira</p>
+    <div class="pills" id="pills"></div>
+    <div class="two-col">
+      <div class="card">
+        <p class="sec-lbl" style="margin-bottom:1rem;">Dados do produto</p>
+        <div class="field"><label>Nome do produto</label><input type="text" class="fi" id="f-nome" placeholder="Ex: Samsung Galaxy A55" oninput="calcNow()"></div>
+        <div class="field"><label>Preço no sistema LucroCell (R$)</label><input type="number" class="fi" id="f-mf" placeholder="0,00" min="0" step="0.01" oninput="calcNow()"></div>
+        <div class="field"><label>Custo do produto — fornecedor (R$)</label><input type="number" class="fi" id="f-custo" placeholder="0,00" min="0" step="0.01" oninput="calcNow()"></div>
+        <div class="field"><label>Gastos adicionais embutidos (R$) <span class="field-note">frete, embalagem...</span></label><input type="number" class="fi" id="f-gastos" value="100" min="0" step="0.01" oninput="calcNow()"></div>
+        <div class="field"><label>Preço na tabela da financeira (R$)</label><input type="number" class="fi" id="f-fin" placeholder="0,00" min="0" step="0.01" oninput="calcNow()"></div>
+        <div class="field"><label>Entrada exigida pela financeira (R$) <span class="field-note">desconta do financiamento</span></label><input type="number" class="fi" id="f-ent-exig" value="0" min="0" step="0.01" oninput="calcNow()"></div>
+        <div class="field"><label>Entrada cobrada do cliente (R$) <span class="field-note">0 se a loja absorve</span></label><input type="number" class="fi" id="f-ent-cli" value="0" min="0" step="0.01" oninput="calcNow()"></div>
+      </div>
+      <div>
+        <div id="verdict-wrap"></div>
+        <div class="res-block">
+          <p class="sec-lbl" style="margin-bottom:.75rem;">Detalhamento</p>
+          <div id="rrows"><div class="rrow"><span class="rl">Preencha os dados ao lado</span><span class="rv muted">—</span></div></div>
+        </div>
+        <div id="sug-wrap"></div>
+        <div class="ia-box" style="margin-top:8px;">
+          <div class="ia-hdr"><span class="ia-badge">IA</span><span style="font-size:13px;font-weight:600;color:var(--purple);">Assistente de precificação</span></div>
+          <div class="ia-msgs" id="ia-msgs">
+            <div class="ia-msg sys">Preencha os dados do produto e me pergunte qualquer coisa — preços, margens, comparações.</div>
+          </div>
+          <div class="ia-row">
+            <input class="ia-inp" id="ia-input" type="text" placeholder="Ex: Qual o melhor preço para a Odescred?" onkeydown="if(event.key==='Enter')sendIA()">
+            <button class="ia-send" id="ia-btn" onclick="sendIA()">Enviar</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-p" onclick="salvar()">💾 Salvar no histórico</button>
+          <button class="btn" onclick="limpar()">Limpar</button>
+          <button class="btn" onclick="imprimirPDF()" style="margin-left:auto;">🖨️ Imprimir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RECEBIMENTOS ══ -->
+  <div id="tab-pay" class="pane">
+    <div class="metrics" id="pay-metrics"></div>
+    <div class="card" style="margin-bottom:1.25rem;">
+      <p class="sec-lbl" style="margin-bottom:1rem;">Registrar nova venda</p>
+      <div class="reg-grid">
+        <div class="field" style="margin:0;"><label>Produto</label><input type="text" class="fi sel" id="pv-nome" placeholder="Nome do produto"></div>
+        <div class="field" style="margin:0;"><label>Cidade</label>
+          <select class="fi sel" id="pv-cidade">
+            <option>Toledo</option><option>Foz do Iguaçu</option>
+            <option>Cascavel Norte</option><option>Cascavel Centro</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;"><label>Financeira</label><select class="fi sel" id="pv-fin" onchange="updatePrazo()"></select></div>
+        <div class="field" style="margin:0;"><label>Valor a receber (R$)</label><input type="number" class="fi" id="pv-valor" placeholder="0,00" min="0" step="0.01"></div>
+        <div class="field" style="margin:0;"><label>Data da venda</label><input type="date" class="fi sel" id="pv-data" onchange="updatePrazo()"></div>
+        <button class="btn btn-p" onclick="addVenda()" style="height:38px;align-self:end;white-space:nowrap;">+ Registrar</button>
+      </div>
+      <div id="pv-prazo" style="margin-top:10px;font-size:12px;color:var(--accent);min-height:18px;font-weight:600;"></div>
+    </div>
+    <p class="sec-lbl">Filtrar por cidade</p>
+    <div class="city-tabs" id="city-tabs"></div>
+    <div id="pay-content"></div>
+  </div>
+
+  <!-- ══ BALANÇO MENSAL ══ -->
+  <div id="tab-balanco" class="pane">
+    <!-- Cabeçalho de impressão do Balanço -->
+    <div class="print-hdr-balanco" style="display:none;align-items:center;justify-content:space-between;padding-bottom:1rem;margin-bottom:1rem;border-bottom:3px solid #1e3a5f;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;background:#1e3a5f;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="20" height="20"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:900;letter-spacing:-.02em;">Lucro<span style="color:#2563eb;">Cell</span></div>
+          <div style="font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Sistema de Controladoria</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:700;" id="print-balanco-title">Balanço Mensal</div>
+        <div style="font-size:11px;color:#64748b;" id="print-balanco-date"></div>
+      </div>
+    </div>
+    <div class="report-header">
+      <p class="sec-lbl" style="margin:0;">📈 Balanço Geral Mensal</p>
+      <div class="report-filters">
+        <input type="month" id="bal-mes" onchange="renderBalanco()">
+        <button class="btn btn-p" onclick="imprimirBalanco()">🖨️ Imprimir Balanço</button>
+        <button class="btn" id="ia-analise-btn" onclick="gerarAnaliseIA()">🤖 Análise IA</button>
+      </div>
+    </div>
+    <div id="balanco-content"></div>
+    <div class="ia-box" style="margin-top:1rem;" id="ia-balanco-box">
+      <div class="ia-hdr"><span class="ia-badge">IA</span><span style="font-size:13px;font-weight:600;color:var(--purple);">Análise inteligente de custos</span></div>
+      <div class="ia-msgs" id="ia-balanco-msgs">
+        <div class="ia-msg sys">Clique em <strong>🤖 Análise IA</strong> para gerar análise automática de custos diários, semanais e mensais, ou faça uma pergunta específica.</div>
+      </div>
+      <div class="ia-row">
+        <input class="ia-inp" id="ia-bal-input" type="text" placeholder="Ex: Como foram os custos esta semana?" onkeydown="if(event.key==='Enter')sendIABalanco()">
+        <button class="ia-send" id="ia-bal-btn" onclick="sendIABalanco()">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RELATÓRIO ══ -->
+  <div id="tab-report" class="pane">
+    <!-- Print Header (hidden on screen, visible on print) -->
+    <div class="print-hdr" style="display:none;align-items:center;justify-content:space-between;padding-bottom:1rem;margin-bottom:1.5rem;border-bottom:3px solid #1e3a5f;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="22" height="22"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <div>
+          <div style="font-size:20px;font-weight:900;letter-spacing:-.02em;">Lucro<span style="color:#2563eb;">Cell</span></div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Sistema de Controladoria</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:700;" id="print-report-title">Relatório Diário de Vendas</div>
+        <div style="font-size:11px;color:#64748b;" id="print-report-date"></div>
+      </div>
+    </div>
+    <div class="report-header">
+      <p class="sec-lbl" style="margin:0;">Relatório Contábil de Vendas</p>
+      <div class="report-filters">
+        <select id="rpt-cidade" onchange="renderReport()">
+          <option value="Todas">Todas as cidades</option>
+          <option>Toledo</option><option>Foz do Iguaçu</option>
+          <option>Cascavel Norte</option><option>Cascavel Centro</option>
+        </select>
+        <select id="rpt-fin" onchange="renderReport()">
+          <option value="Todas">Todas as financeiras</option>
+        </select>
+        <input type="month" id="rpt-mes" onchange="renderReport()">
+        <button class="btn btn-p" onclick="imprimirRelatorio()">🖨️ Imprimir / PDF</button>
+      </div>
+    </div>
+    <div id="report-content"></div>
+  </div>
+
+  <!-- ══ HISTÓRICO ══ -->
+  <div id="tab-hist" class="pane">
+    <div class="metrics" id="hist-met"></div>
+    <div class="hist-actions">
+      <input type="text" class="hist-search" id="hist-search" placeholder="🔍 Pesquisar produto..." oninput="renderHist()">
+      <button class="btn btn-sm" onclick="limparVendas()" title="Remove todas as vendas registradas">🗑️ Limpar vendas</button>
+      <button class="btn btn-sm" onclick="limparProdutos()" title="Remove todos os produtos do histórico">🗑️ Limpar produtos</button>
+      <button class="btn btn-d btn-sm" onclick="limparTudo()" title="Remove tudo: vendas e produtos">⚠️ Limpar tudo</button>
+    </div>
+    <p class="sec-lbl">Produtos calculados e salvos</p>
+    <div class="plist" id="plist"><div style="color:var(--text2);padding:.5rem 0;">Nenhum produto salvo ainda.</div></div>
+  </div>
+
+  <!-- ══ CONFIGURAÇÕES ══ -->
+  <div id="tab-cfg" class="pane">
+
+    <!-- Firebase -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">☁️ Firebase — Sincronização na Nuvem</div>
+      <div class="cfg-card">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div class="field" style="margin:0;"><label>API Key</label><input type="text" class="fi" id="fb-apikey" placeholder="AIzaSy..."></div>
+          <div class="field" style="margin:0;"><label>Project ID</label><input type="text" class="fi" id="fb-projectid" placeholder="lucrocell-xxxxx"></div>
+          <div class="field" style="margin:0;"><label>App ID</label><input type="text" class="fi" id="fb-appid" placeholder="1:123:web:abc..."></div>
+          <div class="field" style="margin:0;"><label>Auth Domain</label><input type="text" class="fi" id="fb-authdomain" placeholder="lucrocell.firebaseapp.com"></div>
+          <div class="field" style="margin:0;grid-column:1/-1;"><label>Database URL <span class="field-note">https://...firebaseio.com</span></label><input type="text" class="fi" id="fb-dburl" placeholder="https://lucrocell-xxxxx-default-rtdb.firebaseio.com"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-p" onclick="salvarConfFirebase()">🔗 Conectar Firebase</button>
+          <button class="btn btn-g" onclick="sincronizarFirebase()">🔄 Sincronizar agora</button>
+          <button class="btn btn-d" onclick="desconectarFirebase()">Desconectar</button>
+        </div>
+        <div id="fb-status" style="margin-top:10px;font-size:13px;"></div>
+        <div class="info-box">
+          <strong>Como configurar:</strong> Firebase Console → Realtime Database → Regras → mude <code>false</code> para <code>true</code> em .read e .write → Publicar.<br>
+          Em seguida: ⚙️ Configurações do projeto → Seus apps → Web → copie apiKey, authDomain, projectId, appId e databaseURL.
+        </div>
+      </div>
+    </div>
+
+    <!-- API Key IA -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">🤖 Assistente IA — Chave de API</div>
+      <div class="cfg-card">
+        <div class="field">
+          <label>Anthropic API Key <span class="field-note">obtenha em console.anthropic.com</span></label>
+          <div style="display:flex;gap:8px;">
+            <input type="password" class="fi" id="api-key-inp" placeholder="sk-ant-..." style="flex:1;">
+            <button class="btn btn-p" onclick="salvarApiKey()">Salvar</button>
+            <button class="btn" onclick="testarApiKey()">Testar</button>
+          </div>
+        </div>
+        <div id="api-key-status" style="margin-top:8px;font-size:12px;"></div>
+      </div>
+    </div>
+
+    <!-- Financeiras -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">🏦 Financeiras — Taxas e Prazos de Recebimento</div>
+      <div class="warn-box">
+        💡 Edite os dados de cada financeira e clique em <strong>💾 Salvar</strong> para gravar na nuvem e persistir os dados.
+      </div>
+      <div style="margin-top:12px;" id="cfg-list"></div>
+      <button class="pill-add" onclick="addFin()" style="margin-top:8px;">+ Adicionar financeira</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════════
+const COLORS=['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
+const CIDADES=['Toledo','Foz do Iguaçu','Cascavel Norte','Cascavel Centro'];
+const CIDADE_COLORS={'Toledo':'#2563eb','Foz do Iguaçu':'#16a34a','Cascavel Norte':'#d97706','Cascavel Centro':'#7c3aed'};
+
+// PRAZOS CORRETOS:
+// dow: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+const DEFAULT_FINS=[
+  {id:1,nome:'Odescred',taxa:7,  prazos:{0:1, 1:1, 2:1, 3:1, 4:1, 5:3, 6:2}},
+  {id:2,nome:'Paymai',  taxa:0,  prazos:{0:1, 1:1, 2:1, 3:1, 4:1, 5:3, 6:2}},
+  {id:3,nome:'Payjoy',  taxa:2,  prazos:{0:7, 1:7, 2:7, 3:7, 4:7, 5:7, 6:9}},
+];
+
+let fins=JSON.parse(JSON.stringify(DEFAULT_FINS));
+let selFinId=1;
+let prods=[];
+let vendas=[];
+let selCidade='Todas';
+let nfid=4, npid=1, nvid=1;
+
+// IDs em modo edição no relatório
+let editingIds=new Set();
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg,type='green',dur=2500){
+  const wrap=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),350);},dur);
+}
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+const R=v=>'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fc=id=>{const i=fins.findIndex(f=>f.id===id);return i>=0?COLORS[i%COLORS.length]:'#888';};
+const gf=id=>fins.find(f=>f.id===id)||null;
+const gv=id=>{const el=document.getElementById(id);return el?parseFloat(el.value)||0:0;};
+
+function today0(){const d=new Date();d.setHours(0,0,0,0);return d.getTime();}
+
+// Sanitiza texto antes de inserir em innerHTML (previne XSS)
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function parseDateStr(str){
+  if(!str) return null;
+  const [y,m,d]=str.split('-').map(Number);
+  const dt=new Date(y,m-1,d,12,0,0,0);
+  return isNaN(dt.getTime())?null:dt;
+}
+
+function dateToMidnightTs(val){
+  if(!val) return null;
+  // Se for ISO string, parseia a parte da data sem deixar fuso deslocar o dia
+  if(typeof val==='string'){
+    const dateStr=val.includes('T')?val.split('T')[0]:val;
+    const parts=dateStr.split('-').map(Number);
+    if(parts.length===3){
+      const d=new Date(parts[0],parts[1]-1,parts[2],0,0,0,0);
+      return isNaN(d)?null:d.getTime();
+    }
+  }
+  let d=val instanceof Date?new Date(val):new Date(val);
+  if(isNaN(d)) return null;
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+
+function fmtDate(val){
+  if(!val) return '—';
+  // Se for ISO string com T, extrai só a data para evitar shift de fuso horário
+  if(typeof val==='string'&&val.includes('T')){
+    const parts=val.split('T')[0].split('-').map(Number);
+    if(parts.length===3){
+      const d=new Date(parts[0],parts[1]-1,parts[2]);
+      return isNaN(d)?'—':d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    }
+  }
+  let d=val instanceof Date?val:new Date(val);
+  if(isNaN(d)) return '—';
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+function fmtDateLong(val){
+  if(!val) return '—';
+  if(typeof val==='string'&&val.includes('T')){
+    const parts=val.split('T')[0].split('-').map(Number);
+    if(parts.length===3){
+      const d=new Date(parts[0],parts[1]-1,parts[2]);
+      return isNaN(d)?'—':d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    }
+  }
+  let d=val instanceof Date?val:new Date(val);
+  if(isNaN(d)) return '—';
+  return d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+}
+
+function calcReceiveDate(dataStr,fin){
+  if(!dataStr||!fin) return null;
+  const d=parseDateStr(dataStr);
+  if(!d) return null;
+  const dow=d.getDay();
+  const prazos=fin.prazos||{};
+  const dias=(prazos[dow]!=null)?Number(prazos[dow]):1;
+  const r=new Date(d);
+  r.setDate(r.getDate()+dias);
+  return r;
+}
+
+// Nome amigável do dia da semana
+function dowName(dow){
+  return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dow]||'';
+}
+
+// ═══════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════
+let _notif16hDate=null;
+function tick(){
+  const now=new Date();
+  document.getElementById('hdr-clock').textContent=now.toLocaleTimeString('pt-BR');
+  const hoje=now.toISOString().split('T')[0];
+  if(now.getHours()===16&&now.getMinutes()===0&&now.getSeconds()===0&&_notif16hDate!==hoje){
+    _notif16hDate=hoje;
+    notif16h();
+  }
+}
+setInterval(tick,1000);tick();
+const _hdrDate=document.getElementById('hdr-date');
+if(_hdrDate) _hdrDate.textContent=
+  new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+function notif16h(){
+  const t=today0();
+  const pagHoje=vendas.filter(v=>dateToMidnightTs(v.dataRecv)===t);
+  const total=pagHoje.reduce((s,v)=>s+(v.valor||0),0);
+  document.getElementById('notif-msg').textContent=
+    total>0?`São 16h! Hoje você recebe ${R(total)} de ${pagHoje.length} venda(s).`
+           :'São 16h! Sem recebimentos previstos para hoje.';
+  document.getElementById('notif').classList.add('show');
+}
+
+// ═══════════════════════════════════════
+// NAVEGAÇÃO
+// ═══════════════════════════════════════
+function goTab(t){
+  document.querySelectorAll('.pane').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  const map={calc:0,pay:1,balanco:2,report:3,hist:4,cfg:5};
+  if(map[t]!=null) document.querySelectorAll('.tab-btn')[map[t]].classList.add('active');
+  if(t==='pay')    renderPay();
+  if(t==='balanco'){const balEl=document.getElementById('bal-mes');if(balEl&&!balEl.value){const n=new Date();balEl.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}renderBalanco();}
+  if(t==='report') renderReport();
+  if(t==='hist')   renderHist();
+  if(t==='cfg')    renderCfg();
+}
+
+// ═══════════════════════════════════════
+// PILLS
+// ═══════════════════════════════════════
+function renderPills(){
+  const el=document.getElementById('pills');
+  if(!el) return;
+  el.innerHTML=fins.map(f=>{
+    const col=fc(f.id),act=f.id===selFinId;
+    return `<div class="pill${act?' active':''}"
+      style="${act?'border-color:'+col+';background:'+col+'14;color:'+col+';':''}"
+      onclick="selFin(${f.id})">
+      <div class="dot" style="background:${col};"></div>
+      ${f.nome}<span class="pct">${f.taxa}%</span>
+    </div>`;
+  }).join('')+`<button class="pill-add" onclick="addFinRapido()">+ Nova</button>`;
+  const sel=document.getElementById('pv-fin');
+  if(sel){
+    const cur=sel.value;
+    sel.innerHTML=fins.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('');
+    if(fins.find(f=>String(f.id)===cur)) sel.value=cur;
+  }
+  const rf=document.getElementById('rpt-fin');
+  if(rf){
+    const cv=rf.value;
+    rf.innerHTML='<option value="Todas">Todas as financeiras</option>'+
+      fins.map(f=>`<option value="${f.nome}">${f.nome}</option>`).join('');
+    rf.value=cv||'Todas';
+  }
+}
+
+function selFin(id){selFinId=id;renderPills();calcNow();}
+
+// ═══════════════════════════════════════
+// CALCULADORA
+// ═══════════════════════════════════════
+function calcNow(){
+  const mf      =gv('f-mf');
+  const custo   =gv('f-custo');
+  const gastos  =gv('f-gastos');
+  const finP    =gv('f-fin');
+  const entExig =gv('f-ent-exig');
+  const entCli  =gv('f-ent-cli');
+  const fin     =gf(selFinId);
+  if(!fin) return;
+
+  if(!custo&&!finP){
+    document.getElementById('rrows').innerHTML='<div class="rrow"><span class="rl">Preencha os dados ao lado</span><span class="rv muted">—</span></div>';
+    document.getElementById('verdict-wrap').innerHTML='';
+    document.getElementById('sug-wrap').innerHTML='';
+    window._lastCalc=null;
+    return;
+  }
+
+  const custoTotal =custo+gastos;
+  const taxa       =fin.taxa/100;
+  const valFinanc  =Math.max(0,finP-entExig);
+  const descFin    =valFinanc*taxa;
+  const repasse    =valFinanc*(1-taxa);
+  const entAbsorv  =Math.max(0,entExig-entCli);
+  const totalRecebe=repasse+entCli;
+  const resultado  =totalRecebe-custoTotal;
+  const difMF      =finP-mf;
+  const margem     =custoTotal>0?(resultado/custoTotal*100):0;
+  const entCliMin  =Math.max(0,custoTotal-repasse);
+  const precoIdeal =taxa<1?(custoTotal/(1-taxa))+entExig:0;
+
+  window._lastCalc={mf,custo,gastos,finP,entExig,entCli,fin,custoTotal,taxa,valFinanc,descFin,repasse,entAbsorv,totalRecebe,resultado,difMF,margem,entCliMin,precoIdeal};
+
+  const rows=[
+    {l:'Preço sistema LucroCell',              v:mf    ?R(mf)             :'—', cls:''},
+    {l:'Custo do produto (fornecedor)',         v:custo ?R(custo)          :'—', cls:''},
+    {l:'Gastos adicionais embutidos',           v:R(gastos),                     cls:'warn-c'},
+    {l:'Custo total da loja',                  v:R(custoTotal),                  cls:'',bold:true},
+    {sep:true},
+    {l:'Preço na tabela da financeira',         v:finP  ?R(finP)           :'—', cls:''},
+    {l:'Entrada exigida pela financeira',       v:entExig?'− '+R(entExig)  :'R$ 0,00',cls:entExig?'bad':'muted'},
+    {l:'Valor efetivamente financiado',         v:finP  ?R(valFinanc)      :'—', cls:''},
+    {l:`Desconto da financeira (${fin.taxa}%)`, v:finP  ?'− '+R(descFin)   :'—', cls:'bad'},
+    {l:'Repasse líquido da financeira',         v:finP  ?R(repasse)        :'—', cls:'',bold:true},
+    {sep:true},
+    {l:'Entrada cobrada do cliente',            v:'+ '+R(entCli),                cls:'ok'},
+    {l:'Entrada absorvida pela loja',           v:entAbsorv>0?'− '+R(entAbsorv):'R$ 0,00',cls:entAbsorv>0?'bad':'muted'},
+    {sep:true},
+    {l:'Diferença tabela fin. vs sist. LC',     v:mf&&finP?(difMF>=0?'+ ':'− ')+R(Math.abs(difMF)):'—',cls:difMF>=0?'ok':'bad'},
+    {sep:true},
+    {l:'Total que entra no caixa',              v:finP  ?R(totalRecebe)    :'—', cls:'',bold:true},
+  ];
+
+  document.getElementById('rrows').innerHTML=
+    rows.map(r=>r.sep
+      ?'<div style="border-top:1px solid var(--border);margin:3px 0;"></div>'
+      :`<div class="rrow${r.bold?' rtotal':''}"><span class="rl">${r.l}</span><span class="rv ${r.cls}">${r.v}</span></div>`
+    ).join('')+
+    (finP&&custo?`<div class="rrow rtotal" style="border-top:2px solid var(--border);margin-top:4px;padding-top:12px;">
+      <span class="rl">Resultado final</span>
+      <span class="rv ${resultado>=0?'ok':'bad'}">${resultado>=0?'+ ':'− '}${R(Math.abs(resultado))}
+        <small style="font-size:11px;font-weight:400;"> (${margem>=0?'+':''}${margem.toFixed(1)}%)</small>
+      </span></div>`:'');
+
+  let vd='';
+  if(finP&&custo){
+    if(resultado>=0) vd=`<div class="verdict ok"><span>✓</span><div><strong>Lucro de ${R(resultado)}</strong> com a ${fin.nome}.</div></div>`;
+    else if(resultado>-300) vd=`<div class="verdict wrn"><span>!</span><div><strong>Prejuízo de ${R(Math.abs(resultado))}</strong> — cobrar ${R(entCliMin)} de entrada resolve.</div></div>`;
+    else vd=`<div class="verdict bad"><span>✕</span><div><strong>Prejuízo de ${R(Math.abs(resultado))}</strong> — ajuste o preço ou a entrada.</div></div>`;
+  }
+  document.getElementById('verdict-wrap').innerHTML=vd;
+
+  let sg='';
+  if(finP&&custo&&resultado<0){
+    sg=`<div class="sug">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;">Como resolver</div>
+      <div style="margin-bottom:5px;">Entrada mínima ao cliente: <strong class="mono">${R(entCliMin)}</strong></div>
+      <div>Preço mínimo na tabela da financeira: <strong class="mono">${R(precoIdeal)}</strong></div>
+    </div>`;
+  }
+  document.getElementById('sug-wrap').innerHTML=sg;
+}
+
+// ═══════════════════════════════════════
+// IA
+// ═══════════════════════════════════════
+function getApiKey(){return localStorage.getItem('lucrocell_apikey')||'';}
+function salvarApiKey(){
+  const k=document.getElementById('api-key-inp').value.trim();
+  if(!k){alert('Cole a chave antes de salvar.');return;}
+  localStorage.setItem('lucrocell_apikey',k);
+  document.getElementById('api-key-status').innerHTML='<span style="color:var(--green);font-weight:600;">✓ Chave salva!</span>';
+  showToast('✓ Chave de API salva!','green');
+  setTimeout(()=>{document.getElementById('api-key-status').innerHTML='';},3000);
+}
+async function testarApiKey(){
+  const k=document.getElementById('api-key-inp').value.trim()||getApiKey();
+  if(!k){alert('Cole ou salve a chave primeiro.');return;}
+  const el=document.getElementById('api-key-status');
+  el.innerHTML='<span style="color:var(--text2);">Testando...</span>';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'ok'}]})});
+    if(r.ok){el.innerHTML='<span style="color:var(--green);font-weight:600;">✓ Chave válida! IA funcionando.</span>';showToast('✓ IA funcionando!','green');}
+    else{const d=await r.json();el.innerHTML='<span style="color:var(--red);">✕ Erro: '+(d.error?.message||r.status)+'</span>';}
+  }catch(e){el.innerHTML='<span style="color:var(--red);">✕ Erro de conexão.</span>';}
+}
+
+function trimIAMsgs(el,maxMsgs=20){
+  const msgs=el.querySelectorAll('.ia-msg:not(.loading)');
+  if(msgs.length>maxMsgs){
+    for(let i=0;i<msgs.length-maxMsgs;i++) msgs[i].remove();
+  }
+}
+
+async function sendIA(){
+  const inp=document.getElementById('ia-input');
+  const msg=inp.value.trim();
+  if(!msg) return;
+  inp.value='';
+  const btn=document.getElementById('ia-btn');
+  btn.disabled=true;
+  const msgs=document.getElementById('ia-msgs');
+  const loadId='ia-load-'+Date.now();
+  msgs.innerHTML+=`<div class="ia-msg usr">${escapeHtml(msg)}</div><div class="ia-msg loading" id="${loadId}">Analisando...</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  const c=window._lastCalc||{};
+  const fin=gf(selFinId);
+  const ctx=c.finP?`Dados na calculadora:
+Produto: ${document.getElementById('f-nome').value||'não informado'}
+Financeira: ${fin?fin.nome:''} (${fin?fin.taxa:0}%)
+Preço LucroCell: R$ ${c.mf||0} | Custo: R$ ${c.custo||0} | Gastos: R$ ${c.gastos||0}
+Custo total: R$ ${c.custoTotal||0} | Tabela fin.: R$ ${c.finP||0}
+Entrada exigida: R$ ${c.entExig||0} | Valor financiado: R$ ${c.valFinanc||0}
+Desconto ${fin?fin.taxa:0}%: R$ ${c.descFin||0} | Repasse: R$ ${c.repasse||0}
+Entrada cliente: R$ ${c.entCli||0} | Total no caixa: R$ ${c.totalRecebe||0}
+Resultado: R$ ${c.resultado||0} (${(c.margem||0).toFixed(1)}%)
+Entrada mínima: R$ ${c.entCliMin||0} | Preço mínimo fin.: R$ ${c.precoIdeal||0}`
+  :'Nenhum produto preenchido na calculadora.';
+  try{
+    const apiKey=getApiKey();
+    if(!apiKey){
+      document.getElementById(loadId).remove();
+      msgs.innerHTML+='<div class="ia-msg sys" style="color:var(--red);">Configure a chave de API na aba <strong>Configurações</strong>.</div>';
+      btn.disabled=false;msgs.scrollTop=msgs.scrollHeight;return;
+    }
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:`Você é assistente especializado em precificação de celulares para a loja LucroCell. Responda em português, de forma prática e direta.\n\n${ctx}`,
+        messages:[{role:'user',content:msg}]})});
+    const data=await resp.json();
+    const text=data.content?.find(b=>b.type==='text')?.text||'Não foi possível responder.';
+    document.getElementById(loadId).remove();
+    msgs.innerHTML+=`<div class="ia-msg sys">${text.replace(/\n/g,'<br>')}</div>`;
+    trimIAMsgs(msgs);
+  }catch(e){
+    const el=document.getElementById(loadId);if(el)el.remove();
+    msgs.innerHTML+=`<div class="ia-msg sys" style="color:var(--red);">Erro ao conectar com a IA.</div>`;
+  }
+  btn.disabled=false;msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ═══════════════════════════════════════
+// SALVAR / LIMPAR (CALCULADORA)
+// ═══════════════════════════════════════
+function salvar(){
+  const nome=document.getElementById('f-nome').value.trim()||'Produto sem nome';
+  const mf=gv('f-mf'),custo=gv('f-custo'),gastos=gv('f-gastos');
+  const finP=gv('f-fin'),entExig=gv('f-ent-exig'),entCli=gv('f-ent-cli');
+  const fin=gf(selFinId);
+  if(!fin){alert('Selecione uma financeira válida.');return;}
+  if(!custo&&!finP){alert('Preencha pelo menos o custo e o preço da financeira.');return;}
+  const custoTotal=custo+gastos;
+  const taxa=fin.taxa/100;
+  const valFinanc=Math.max(0,finP-entExig);
+  const repasse=valFinanc*(1-taxa);
+  const totalRecebe=repasse+entCli;
+  const resultado=totalRecebe-custoTotal;
+  prods.unshift({id:npid++,nome,mf,custo,gastos,finP,entExig,entCli,finId:selFinId,finNome:fin.nome,taxa:fin.taxa,resultado,custoTotal,repasse,valFinanc,totalRecebe,savedAt:new Date().toISOString()});
+  salvarNoFirebase();
+  showToast('💾 "'+nome+'" salvo no histórico!','green');
+}
+
+function limpar(){
+  ['f-nome','f-mf','f-custo','f-fin'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const fg=document.getElementById('f-gastos');if(fg)fg.value='100';
+  const fentExig=document.getElementById('f-ent-exig');if(fentExig)fentExig.value='0';
+  const fentCli=document.getElementById('f-ent-cli');if(fentCli)fentCli.value='0';
+  window._lastCalc=null;
+  renderPills();
+  calcNow();
+}
+
+// ═══════════════════════════════════════
+// RECEBIMENTOS
+// ═══════════════════════════════════════
+function updatePrazo(){
+  const finId=parseInt(document.getElementById('pv-fin').value);
+  const data=document.getElementById('pv-data').value;
+  const fin=gf(finId);
+  const el=document.getElementById('pv-prazo');
+  if(!fin||!data){if(el)el.textContent='';return;}
+  const recv=calcReceiveDate(data,fin);
+  if(!recv){if(el)el.textContent='';return;}
+  const d=parseDateStr(data);
+  const dow=d?d.getDay():0;
+  const dias=(fin.prazos&&fin.prazos[dow]!=null)?Number(fin.prazos[dow]):1;
+  el.innerHTML=`📅 Prazo ${fin.nome}: <strong>${dias} dia(s)</strong> — recebimento em <strong>${fmtDateLong(recv)}</strong>`;
+}
+
+function addVenda(){
+  const nome=document.getElementById('pv-nome').value.trim()||'Produto';
+  const cidade=document.getElementById('pv-cidade').value;
+  const finId=parseInt(document.getElementById('pv-fin').value);
+  const valor=parseFloat(document.getElementById('pv-valor').value)||0;
+  const data=document.getElementById('pv-data').value;
+  if(!valor||!data){showToast('⚠️ Preencha valor e data da venda.','red');return;}
+  const fin=gf(finId);
+  if(!fin){showToast('⚠️ Financeira inválida.','red');return;}
+  const dataRecv=calcReceiveDate(data,fin);
+  vendas.unshift({
+    id:nvid++,nome,cidade,finId,finNome:fin.nome,valor,
+    dataVenda:data,
+    dataRecv:dataRecv?dataRecv.toISOString():null,
+    recebido:false,obs:''
+  });
+  document.getElementById('pv-nome').value='';
+  document.getElementById('pv-valor').value='';
+  salvarNoFirebase();
+  showToast('✓ Venda registrada!','green');
+  renderPay();renderReport();renderBalanco();
+}
+
+function renderCityTabs(){
+  const el=document.getElementById('city-tabs');
+  if(!el) return;
+  el.innerHTML=['Todas',...CIDADES].map(c=>{
+    const col=c==='Todas'?'#2563eb':(CIDADE_COLORS[c]||'#888');
+    const act=selCidade===c;
+    return `<div class="city-tab${act?' active':''}"
+      style="${act?'background:'+col+';border-color:'+col+';':''}"
+      onclick="selCidade='${c}';renderCityTabs();renderPayContent();">${c}</div>`;
+  }).join('');
+}
+  const t=today0();
+  const em7=t+7*86400000;
+  const pagHoje=vendas.filter(v=>dateToMidnightTs(v.dataRecv)===t);
+  const pag7=vendas.filter(v=>{const ts=dateToMidnightTs(v.dataRecv);return ts!=null&&ts>=t&&ts<=em7;});
+  const totalHoje=pagHoje.reduce((s,v)=>s+(v.valor||0),0);
+  const total7=pag7.reduce((s,v)=>s+(v.valor||0),0);
+  const totalAbert=vendas.filter(v=>!v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+  const pm=document.getElementById('pay-metrics');
+  if(pm) pm.innerHTML=`
+    <div class="met"><div class="met-lbl">A receber hoje</div><div class="met-val ${totalHoje>0?'ok':'blue'}">${R(totalHoje)}</div></div>
+    <div class="met"><div class="met-lbl">Próximos 7 dias</div><div class="met-val blue">${R(total7)}</div></div>
+    <div class="met"><div class="met-lbl">Total em aberto</div><div class="met-val">${R(totalAbert)}</div></div>
+    <div class="met"><div class="met-lbl">Vendas registradas</div><div class="met-val blue">${vendas.length}</div></div>`;
+  renderCityTabs();renderPayContent();
+}
+
+function renderPayContent(){
+  const el=document.getElementById('pay-content');
+  if(!el) return;
+  const t=today0();
+  const cidades=selCidade==='Todas'?CIDADES:[selCidade];
+
+  if(!vendas.length){
+    el.innerHTML='<div class="card" style="color:var(--text2);text-align:center;padding:2rem;">Nenhuma venda registrada. Registre acima.</div>';
+    return;
+  }
+
+  const html=cidades.map(cidade=>{
+    const col=CIDADE_COLORS[cidade]||'#888';
+    const cvs=vendas.filter(v=>v.cidade===cidade);
+    if(!cvs.length) return '';
+    const grupos={};
+    cvs.forEach(v=>{
+      const ts=dateToMidnightTs(v.dataRecv);
+      if(ts==null) return;
+      if(!grupos[ts]) grupos[ts]={ts,items:[]};
+      grupos[ts].items.push(v);
+    });
+    const sorted=Object.values(grupos).sort((a,b)=>a.ts-b.ts);
+    if(!sorted.length) return '';
+
+    let rows=sorted.map(g=>{
+      const isHoje=g.ts===t;
+      const isPass=g.ts<t;
+      const d=new Date(g.ts);
+      const totalDia=g.items.reduce((s,v)=>s+(v.valor||0),0);
+      const tag=isHoje?'<span class="tag-hoje">HOJE</span>':
+                isPass?'<span class="tag-passado">Recebido</span>':
+                       '<span class="tag-futuro">Aguardando</span>';
+      const contFin={},valorFin={};
+      g.items.forEach(v=>{
+        contFin[v.finNome]=(contFin[v.finNome]||0)+1;
+        valorFin[v.finNome]=(valorFin[v.finNome]||0)+(v.valor||0);
+      });
+      const finPills=Object.entries(contFin).map(([fn,qt])=>{
+        const finObj=fins.find(f=>f.nome===fn);
+        const cor=finObj?fc(finObj.id):'#888';
+        return `<div class="fin-count-pill">
+          <span class="fin-count-name" style="color:${cor};">${fn}</span>
+          <span class="fin-count-num">${qt}×</span>
+          <span class="fin-count-val">${R(valorFin[fn])}</span>
+        </div>`;
+      }).join('');
+      const bg=isHoje?'#dbeafe':isPass?'var(--bg3)':'var(--bg2)';
+      const totalColor=isHoje?'var(--accent)':isPass?'var(--green)':'var(--text)';
+      return `<tr><td style="background:${bg};border-bottom:1px solid var(--border2);">
+        <div class="day-block">
+          <div class="day-header">
+            <div class="day-title">${fmtDate(d)} — ${d.toLocaleDateString('pt-BR',{weekday:'long'})} ${tag}</div>
+            <div class="day-total" style="color:${totalColor};">${R(totalDia)}</div>
+          </div>
+          <div class="fin-pills-row">${finPills}
+            <div class="fin-count-pill" style="background:var(--bg4);">
+              <span class="fin-count-name" style="color:var(--text2);">Total</span>
+              <span class="fin-count-num">${g.items.length}×</span>
+            </div>
+          </div>
+        </div>
+      </td></tr>`;
+    }).join('');
+
+    const totalCidade=cvs.reduce((s,v)=>s+(v.valor||0),0);
+    return `<div class="pay-section">
+      <div class="pay-section-title">
+        <span class="city-dot" style="background:${col};"></span>${cidade}
+        <span style="font-size:13px;font-weight:400;color:var(--text2);">${cvs.length} venda(s) — ${R(totalCidade)}</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="ptbl">
+          <thead><tr><th>Data de recebimento — Financeiras e quantidades</th></tr></thead>
+          <tbody>${rows}
+            <tr class="tbl-total-row"><td><span style="float:right;">Total ${cidade}: <span class="mono ok">${R(totalCidade)}</span></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=html||'<div class="card" style="color:var(--text2);text-align:center;padding:2rem;">Nenhuma venda nesta cidade.</div>';
+}
+
+function toggleRecebido(id,val){
+  const v=vendas.find(x=>x.id===id);
+  if(v){v.recebido=val;salvarNoFirebase();renderReport();renderPay();renderBalanco();}
+}
+function remVenda(id){
+  if(!confirm('Remover esta venda?')) return;
+  vendas=vendas.filter(v=>v.id!==id);
+  editingIds.delete(id);
+  salvarNoFirebase();
+  renderPay();renderReport();renderBalanco();
+}
+
+// ═══════════════════════════════════════
+// RELATÓRIO DIÁRIO — CONTÁBIL
+// ═══════════════════════════════════════
+function renderReport(){
+  const cidade=document.getElementById('rpt-cidade')?.value||'Todas';
+  const finFlt=document.getElementById('rpt-fin')?.value||'Todas';
+  const mes=document.getElementById('rpt-mes')?.value||'';
+  let filtered=vendas.slice();
+  if(cidade!=='Todas') filtered=filtered.filter(v=>v.cidade===cidade);
+  if(finFlt!=='Todas') filtered=filtered.filter(v=>v.finNome===finFlt);
+  if(mes) filtered=filtered.filter(v=>v.dataVenda&&v.dataVenda.startsWith(mes));
+
+  const el=document.getElementById('report-content');
+  if(!el) return;
+  if(!filtered.length){el.innerHTML='<div class="card" style="color:var(--text2);text-align:center;padding:2rem;">Nenhuma venda com esses filtros.</div>';return;}
+
+  const t=today0();
+  const totalGeral=filtered.reduce((s,v)=>s+(v.valor||0),0);
+  const totalRecebido=filtered.filter(v=>v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+  const totalPendente=filtered.filter(v=>!v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+  const pagHoje=filtered.filter(v=>dateToMidnightTs(v.dataRecv)===t).reduce((s,v)=>s+(v.valor||0),0);
+  const qtVendas=filtered.length;
+
+  const mesLabel=mes?new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'Todos os períodos';
+
+  // ── Cabeçalho Contábil ──
+  const summary=`<div class="rpt-summary" style="flex-direction:column;gap:.75rem;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div class="rpt-sum-left">
+        <div class="rpt-sum-sub">Relatório Contábil de Vendas — ${mesLabel}</div>
+        <div class="rpt-sum-val">${R(totalGeral)}</div>
+        <div class="rpt-sum-date">Volume total no mês</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="rpt-sum-sub">📱 Aparelhos Vendidos</div>
+        <div style="font-size:42px;font-weight:900;font-family:'JetBrains Mono',monospace;letter-spacing:-.03em;">${qtVendas}</div>
+        <div class="rpt-sum-meta">unidades no período</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.2);padding-top:.75rem;">
+      <div><div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.08em;">✓ Confirmado</div><div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#86efac;">${R(totalRecebido)}</div></div>
+      <div><div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.08em;">⏳ Pendente</div><div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fcd34d;">${R(totalPendente)}</div></div>
+      <div><div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.08em;">📊 Ticket Médio</div><div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;">${qtVendas?R(totalGeral/qtVendas):'—'}</div></div>
+      <div><div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.08em;">A Receber Hoje</div><div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fcd34d;">${R(pagHoje)}</div></div>
+      <div><div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.08em;">🏙️ Cidades</div><div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;">${[...new Set(filtered.map(v=>v.cidade))].length}</div></div>
+      <div><div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.08em;">🏦 Financeiras</div><div style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;">${[...new Set(filtered.map(v=>v.finNome))].length}</div></div>
+    </div>
+  </div>`;
+
+  // ── Agrupar por dia de venda (contábil) ──
+  const porDia={};
+  filtered.forEach(v=>{
+    const dia=v.dataVenda||'sem-data';
+    if(!porDia[dia]) porDia[dia]=[];
+    porDia[dia].push(v);
+  });
+  const diasOrdenados=Object.keys(porDia).sort().reverse();
+
+  const diaBlocks=diasOrdenados.map(dia=>{
+    const cvs=porDia[dia];
+    const dObj=dia!=='sem-data'?parseDateStr(dia):null;
+    const isHojeVenda=dObj?(dateToMidnightTs(dObj)===today0()):false;
+    const totalDia=cvs.reduce((s,v)=>s+(v.valor||0),0);
+    const recDia=cvs.filter(v=>v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+    const penDia=cvs.filter(v=>!v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+    const finGrp={};
+    cvs.forEach(v=>{if(!finGrp[v.finNome])finGrp[v.finNome]={qt:0,valor:0};finGrp[v.finNome].qt++;finGrp[v.finNome].valor+=v.valor||0;});
+    const finTags=Object.entries(finGrp).map(([n,fd])=>{
+      const fo=fins.find(f=>f.nome===n);const cor=fo?fc(fo.id):'#888';
+      return `<span class="fin-tag" style="color:${cor};border-color:${cor}44;">${n}: ${fd.qt}× ${R(fd.valor)}</span>`;
+    }).join('');
+    const diaLabel=dObj?fmtDateLong(dObj):(dia==='sem-data'?'Data não informada':dia);
+    const tagHdr=isHojeVenda?'<span class="tag-hoje">HOJE</span>':'';
+
+    const rows=cvs.map(v=>{
+      const recvHoje=dateToMidnightTs(v.dataRecv)===t;
+      const isEdit=editingIds.has(v.id);
+      if(isEdit){
+        const finOpts=fins.map(f=>`<option value="${f.id}" ${f.id===v.finId?'selected':''}>${f.nome}</option>`).join('');
+        return `<tr class="editing-row" id="row-${v.id}">
+          <td><input class="rpt-edit-inp" id="edit-nome-${v.id}" value="${v.nome}" placeholder="Nome do produto"></td>
+          <td><select class="rpt-edit-sel" id="edit-fin-${v.id}" onchange="recalcRecvDate(${v.id})">${finOpts}</select></td>
+          <td>${v.cidade}</td>
+          <td><input class="rpt-edit-inp" type="date" id="edit-datavenda-${v.id}" value="${v.dataVenda}" onchange="recalcRecvDate(${v.id})"></td>
+          <td id="edit-recv-${v.id}" style="font-weight:600;color:var(--accent);">${fmtDate(v.dataRecv)}</td>
+          <td><input class="rpt-edit-inp" type="number" id="edit-valor-${v.id}" value="${(v.valor||0).toFixed(2)}" min="0" step="0.01" style="width:110px;font-family:'JetBrains Mono',monospace;"></td>
+          <td><label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="edit-recebido-${v.id}" ${v.recebido?'checked':''}> ${v.recebido?'Recebido':'Pendente'}</label></td>
+          <td class="no-print" style="white-space:nowrap;">
+            <button class="btn btn-g btn-sm" onclick="salvarEdicaoVenda(${v.id})" style="margin-right:4px;">✓ Salvar</button>
+            <button class="btn btn-sm" onclick="cancelarEdicao(${v.id})">✕</button>
+          </td>
+        </tr>`;
+      }
+      return `<tr id="row-${v.id}">
+        <td style="font-weight:600;">${v.nome}</td>
+        <td><span class="fin-tag" style="color:${fc(v.finId)};border-color:${fc(v.finId)}44;">${v.finNome}</span></td>
+        <td>${v.cidade}</td>
+        <td class="mono">${fmtDate(parseDateStr(v.dataVenda))}</td>
+        <td style="color:${recvHoje?'var(--accent)':'inherit'};font-weight:${recvHoje?'700':'400'};">
+          ${fmtDate(v.dataRecv)}${recvHoje?'<span class="tag-hoje" style="margin-left:4px;">HOJE</span>':''}
+        </td>
+        <td class="mono ok" style="font-weight:700;">${R(v.valor||0)}</td>
+        <td>
+          <span onclick="toggleRecebido(${v.id},${!v.recebido})" title="Clique para alternar"
+            style="cursor:pointer;font-size:11px;padding:3px 9px;border-radius:12px;font-weight:700;
+            background:${v.recebido?'var(--green-bg)':'var(--bg3)'};
+            color:${v.recebido?'var(--green)':'var(--text2)'};
+            border:1px solid ${v.recebido?'var(--green-bd)':'var(--border2)'};">
+            ${v.recebido?'✓ Recebido':'⏳ Pendente'}
+          </span>
+        </td>
+        <td class="no-print" style="white-space:nowrap;">
+          <button class="btn btn-sm" onclick="ativarEdicao(${v.id})" style="margin-right:4px;">✏️ Editar</button>
+          <button class="btn btn-d btn-sm" onclick="remVenda(${v.id})">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Subtotal contábil do dia
+    const subtotal=`<tr style="background:var(--bg3);">
+      <td colspan="5" style="padding:8px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">
+        Subtotal do dia — ${cvs.length} venda(s)
+      </td>
+      <td colspan="2" style="padding:8px 14px;">
+        <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;">
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px;">${R(totalDia)}</span>
+          <span style="font-size:11px;color:var(--green);font-weight:700;">✓ ${R(recDia)}</span>
+          <span style="font-size:11px;color:var(--warn);font-weight:700;">⏳ ${R(penDia)}</span>
+        </div>
+      </td>
+      <td class="no-print"></td>
+    </tr>`;
+
+    return `<div class="rpt-card" style="margin-bottom:1.25rem;">
+      <div class="rpt-card-hdr" style="background:${isHojeVenda?'#dbeafe':'var(--bg3)'};">
+        <span style="display:flex;align-items:center;gap:8px;font-size:14px;">
+          📅 ${diaLabel} ${tagHdr}
+          <span style="font-size:12px;font-weight:400;color:var(--text2);">${cvs.length} venda(s)</span>
+        </span>
+        <span class="mono ok" style="font-size:15px;font-weight:800;">${R(totalDia)}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);">
+        <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px;">Financeiras:</span>
+        ${finTags}
+        <span class="fin-tag" style="margin-left:auto;color:var(--green);">✓ ${R(recDia)}</span>
+        <span class="fin-tag" style="color:var(--warn);">⏳ ${R(penDia)}</span>
+      </div>
+      <div class="tbl-wrap"><table class="rpt-tbl">
+        <thead><tr>
+          <th>Produto</th><th>Financeira</th><th>Cidade</th>
+          <th>Data venda</th><th>Data recebimento</th>
+          <th>Valor</th><th>Status</th><th class="no-print">Ações</th>
+        </tr></thead>
+        <tbody>${rows}${subtotal}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+
+  // ── Resumo por semana no relatório ──
+  const porSemanaRpt={};
+  filtered.forEach(v=>{
+    if(!v.dataVenda) return;
+    const d=parseDateStr(v.dataVenda);
+    if(!d) return;
+    const wi=getWeekInfo(d);
+    const key=d.getFullYear()+'_S'+wi.num;
+    if(!porSemanaRpt[key]) porSemanaRpt[key]={qt:0,valor:0,recebido:0,pendente:0,label:wi.label,range:wi.range,num:wi.num,fins:{}};
+    porSemanaRpt[key].qt++;
+    porSemanaRpt[key].valor+=v.valor||0;
+    if(v.recebido) porSemanaRpt[key].recebido+=v.valor||0;
+    else porSemanaRpt[key].pendente+=v.valor||0;
+    const fn=v.finNome||'Outros';
+    if(!porSemanaRpt[key].fins[fn]) porSemanaRpt[key].fins[fn]={qt:0,valor:0};
+    porSemanaRpt[key].fins[fn].qt++;
+    porSemanaRpt[key].fins[fn].valor+=v.valor||0;
+  });
+
+  const semanaRows=Object.values(porSemanaRpt).sort((a,b)=>a.num-b.num).map(sw=>{
+    const finStr=Object.entries(sw.fins).map(([fn,fd])=>`${fn}: ${fd.qt}×`).join(' | ');
+    return `<tr>
+      <td><strong>${sw.label}</strong></td>
+      <td style="font-size:11px;color:var(--text2);">${sw.range}</td>
+      <td class="mono" style="font-weight:700;color:var(--accent);">${sw.qt}</td>
+      <td class="mono ok" style="font-weight:700;">${R(sw.valor)}</td>
+      <td class="mono" style="color:var(--green);">${R(sw.recebido)}</td>
+      <td class="mono" style="color:var(--warn);">${R(sw.pendente)}</td>
+      <td style="font-size:11px;color:var(--text2);">${finStr}</td>
+    </tr>`;
+  }).join('');
+
+  const dreSemanaBlocoRpt=semanaRows?`<div class="rpt-card" style="margin-bottom:1.25rem;">
+    <div class="rpt-card-hdr"><span>📅 Resumo por Semana</span><span class="mono ok">${R(totalGeral)}</span></div>
+    <div class="tbl-wrap"><table class="rpt-tbl">
+      <thead><tr><th>Semana</th><th>Período</th><th>Aparelhos</th><th>Volume (R$)</th><th>Recebido</th><th>Pendente</th><th>Por Financeira</th></tr></thead>
+      <tbody>${semanaRows}</tbody>
+      <tfoot><tr style="background:var(--bg4);">
+        <td colspan="2" style="padding:9px 14px;font-weight:700;">TOTAL</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--accent);">${qtVendas}</td>
+        <td class="mono ok" style="padding:9px 14px;font-weight:700;">${R(totalGeral)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--green);">${R(totalRecebido)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--warn);">${R(totalPendente)}</td>
+        <td style="padding:9px 14px;"></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`:'';
+
+  // ── DRE por cidade (resumo contábil) ──
+  const porCidadeRpt={};
+  filtered.forEach(v=>{if(!porCidadeRpt[v.cidade])porCidadeRpt[v.cidade]={qt:0,valor:0,recebido:0,pendente:0};
+    porCidadeRpt[v.cidade].qt++;porCidadeRpt[v.cidade].valor+=v.valor||0;
+    if(v.recebido)porCidadeRpt[v.cidade].recebido+=v.valor||0;
+    else porCidadeRpt[v.cidade].pendente+=v.valor||0;});
+  const dreRows=Object.entries(porCidadeRpt).sort((a,b)=>b[1].valor-a[1].valor).map(([c,d])=>{
+    const col=CIDADE_COLORS[c]||'#888';
+    const pct=totalGeral>0?(d.valor/totalGeral*100):0;
+    return `<tr>
+      <td><span style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:${col};display:inline-block;"></span><strong>${c}</strong></span></td>
+      <td class="mono" style="font-weight:700;">${d.qt}</td>
+      <td class="mono ok" style="font-weight:700;">${R(d.valor)}</td>
+      <td class="mono" style="color:var(--green);">${R(d.recebido)}</td>
+      <td class="mono" style="color:var(--warn);">${R(d.pendente)}</td>
+      <td class="mono">${d.qt?R(d.valor/d.qt):'—'}</td>
+      <td><div style="display:flex;align-items:center;gap:5px;"><div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;"><div style="width:${pct.toFixed(1)}%;height:100%;background:${col};border-radius:3px;"></div></div><span style="font-size:11px;">${pct.toFixed(1)}%</span></div></td>
+    </tr>`;
+  }).join('');
+
+  const dreSemana=`<div class="rpt-card" style="margin-bottom:1.25rem;">
+    <div class="rpt-card-hdr"><span>📊 DRE — Resumo por Cidade</span><span class="mono ok">${R(totalGeral)}</span></div>
+    <div class="tbl-wrap"><table class="rpt-tbl">
+      <thead><tr><th>Cidade</th><th>Qtd</th><th>Total</th><th>Recebido</th><th>Pendente</th><th>Ticket Médio</th><th>% Total</th></tr></thead>
+      <tbody>${dreRows}</tbody>
+      <tfoot><tr style="background:var(--bg4);">
+        <td style="padding:9px 14px;font-weight:700;">TOTAL</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;">${qtVendas}</td>
+        <td class="mono ok" style="padding:9px 14px;font-weight:700;">${R(totalGeral)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--green);">${R(totalRecebido)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--warn);">${R(totalPendente)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;">${qtVendas?R(totalGeral/qtVendas):'—'}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;">100%</td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+
+  // ── Tabela por financeira no Relatório ──
+  const porFinRpt={};
+  filtered.forEach(v=>{
+    const fn=v.finNome||'Sem financeira';
+    if(!porFinRpt[fn]) porFinRpt[fn]={qt:0,valor:0,recebido:0,pendente:0};
+    porFinRpt[fn].qt++;
+    porFinRpt[fn].valor+=v.valor||0;
+    if(v.recebido) porFinRpt[fn].recebido+=v.valor||0;
+    else porFinRpt[fn].pendente+=v.valor||0;
+  });
+  const dreFinRows=Object.entries(porFinRpt).sort((a,b)=>b[1].valor-a[1].valor).map(([fn,fd])=>{
+    const finObj=fins.find(f=>f.nome===fn);
+    const col=finObj?fc(finObj.id):'#888';
+    const pct=totalGeral>0?(fd.valor/totalGeral*100):0;
+    return `<tr>
+      <td><span style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:${col};display:inline-block;"></span><strong>${fn}</strong></span></td>
+      <td class="mono" style="font-weight:800;font-size:15px;color:var(--accent);">${fd.qt}</td>
+      <td class="mono ok" style="font-weight:700;">${R(fd.valor)}</td>
+      <td class="mono" style="color:var(--green);">${R(fd.recebido)}</td>
+      <td class="mono" style="color:var(--warn);">${R(fd.pendente)}</td>
+      <td class="mono">${fd.qt?R(fd.valor/fd.qt):'—'}</td>
+      <td><div style="display:flex;align-items:center;gap:5px;"><div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;"><div style="width:${pct.toFixed(1)}%;height:100%;background:${col};border-radius:3px;"></div></div><span style="font-size:11px;">${pct.toFixed(1)}%</span></div></td>
+    </tr>`;
+  }).join('');
+  const dreFinBlock=`<div class="rpt-card" style="margin-bottom:1.25rem;">
+    <div class="rpt-card-hdr"><span>🏦 Resumo por Financeira — Aparelhos e Valores</span><span class="mono ok">${R(totalGeral)}</span></div>
+    <div class="tbl-wrap"><table class="rpt-tbl">
+      <thead><tr><th>Financeira</th><th>📱 Aparelhos</th><th>Volume (R$)</th><th>Recebido</th><th>Pendente</th><th>Ticket Médio</th><th>% Total</th></tr></thead>
+      <tbody>${dreFinRows}</tbody>
+      <tfoot><tr style="background:var(--bg4);">
+        <td style="padding:9px 14px;font-weight:700;">TOTAL</td>
+        <td class="mono" style="padding:9px 14px;font-weight:800;font-size:15px;color:var(--accent);">${qtVendas}</td>
+        <td class="mono ok" style="padding:9px 14px;font-weight:700;">${R(totalGeral)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--green);">${R(totalRecebido)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;color:var(--warn);">${R(totalPendente)}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;">${qtVendas?R(totalGeral/qtVendas):'—'}</td>
+        <td class="mono" style="padding:9px 14px;font-weight:700;">100%</td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+
+  // ── Resumo mensal contábil final ──
+  const resumoFinal=`<div class="rpt-card" style="margin-bottom:1.25rem;border-color:var(--accent);">
+    <div class="rpt-card-hdr" style="background:var(--accent);color:#fff;"><span>📊 RESUMO MENSAL — CONSOLIDADO</span><span class="mono" style="color:#86efac;">${R(totalGeral)}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--border);">
+      <div style="padding:1rem 1.25rem;border-right:1px solid var(--border);">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">📱 Total Aparelhos Vendidos</div>
+        <div style="font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--accent);">${qtVendas}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;">${mesLabel}</div>
+      </div>
+      <div style="padding:1rem 1.25rem;border-right:1px solid var(--border);">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">💰 Valor Total Entrado</div>
+        <div style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--green);">${R(totalGeral)}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;">✓ ${R(totalRecebido)} confirmado · ⏳ ${R(totalPendente)} pendente</div>
+      </div>
+      <div style="padding:1rem 1.25rem;">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">🏦 Financeiras Utilizadas</div>
+        <div style="font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--purple);">${Object.keys(porFinRpt).length}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;">${Object.entries(porFinRpt).sort((a,b)=>b[1].qt-a[1].qt).map(([fn,fd])=>`${fn}: ${fd.qt}`).join(' · ')}</div>
+      </div>
+    </div>
+    <div style="padding:.75rem 1.25rem;font-size:11px;color:var(--text2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+      <span>Ticket médio: <strong class="mono">${qtVendas?R(totalGeral/qtVendas):'—'}</strong></span>
+      <span>Gerado em: <strong>${new Date().toLocaleString('pt-BR')}</strong></span>
+    </div>
+  </div>`;
+
+  el.innerHTML=summary+resumoFinal+dreFinBlock+dreSemana+dreSemanaBlocoRpt+diaBlocks;
+}
+
+function ativarEdicao(id){
+  editingIds.add(id);
+  renderReport();
+  // Focus no primeiro campo
+  setTimeout(()=>{const el=document.getElementById('edit-nome-'+id);if(el)el.focus();},50);
+}
+
+function cancelarEdicao(id){
+  editingIds.delete(id);
+  renderReport();
+}
+
+function recalcRecvDate(id){
+  const finId=parseInt(document.getElementById('edit-fin-'+id)?.value);
+  const dataVenda=document.getElementById('edit-datavenda-'+id)?.value;
+  const fin=gf(finId);
+  const recvEl=document.getElementById('edit-recv-'+id);
+  if(!fin||!dataVenda||!recvEl){return;}
+  const recv=calcReceiveDate(dataVenda,fin);
+  recvEl.textContent=recv?fmtDate(recv):'—';
+  // Armazena temporariamente para salvar depois
+  recvEl.dataset.isoDate=recv?recv.toISOString():'';
+}
+
+function salvarEdicaoVenda(id){
+  const v=vendas.find(x=>x.id===id);
+  if(!v) return;
+  const finId=parseInt(document.getElementById('edit-fin-'+id)?.value);
+  const dataVenda=document.getElementById('edit-datavenda-'+id)?.value;
+  const fin=gf(finId);
+  const recvEl=document.getElementById('edit-recv-'+id);
+
+  v.nome=document.getElementById('edit-nome-'+id)?.value.trim()||v.nome;
+  v.valor=parseFloat(document.getElementById('edit-valor-'+id)?.value)||v.valor;
+  v.recebido=document.getElementById('edit-recebido-'+id)?.checked||false;
+  if(fin&&dataVenda){
+    v.finId=finId;
+    v.finNome=fin.nome;
+    v.taxa=fin.taxa;
+    v.dataVenda=dataVenda;
+    // Pegar data calculada ou recalcular
+    const isoDate=recvEl?.dataset.isoDate;
+    if(isoDate){v.dataRecv=isoDate;}
+    else{const recv=calcReceiveDate(dataVenda,fin);v.dataRecv=recv?recv.toISOString():v.dataRecv;}
+  }
+  editingIds.delete(id);
+  salvarNoFirebase();
+  showToast('✓ Venda atualizada!','green');
+  renderReport();renderPay();renderBalanco();
+}
+
+// ═══════════════════════════════════════
+// HISTÓRICO
+// ═══════════════════════════════════════
+function renderHist(){
+  const luc=prods.filter(p=>p.resultado>=0).reduce((s,p)=>s+(p.resultado||0),0);
+  const per=prods.filter(p=>p.resultado<0).reduce((s,p)=>s+Math.abs(p.resultado||0),0);
+  const hm=document.getElementById('hist-met');
+  if(hm) hm.innerHTML=`
+    <div class="met"><div class="met-lbl">Produtos salvos</div><div class="met-val blue">${prods.length}</div></div>
+    <div class="met"><div class="met-lbl">Lucro acumulado</div><div class="met-val ok">${prods.length?R(luc):'—'}</div></div>
+    <div class="met"><div class="met-lbl">Prejuízo exposto</div><div class="met-val ${per>0?'bad':'ok'}">${prods.length?R(per):'—'}</div></div>
+    <div class="met"><div class="met-lbl">Saldo líquido</div><div class="met-val ${(luc-per)>=0?'ok':'bad'}">${prods.length?R(luc-per):'—'}</div></div>`;
+
+  const busca=(document.getElementById('hist-search')?.value||'').toLowerCase();
+  const lista=busca?prods.filter(p=>(p.nome||'').toLowerCase().includes(busca)||(p.finNome||'').toLowerCase().includes(busca)):prods;
+
+  const el=document.getElementById('plist');
+  if(!el) return;
+  if(!lista.length){
+    el.innerHTML=`<div style="color:var(--text2);padding:1rem 0;text-align:center;">${busca?'Nenhum produto encontrado para "'+busca+'".':'Nenhum produto salvo ainda.'}</div>`;
+    return;
+  }
+  el.innerHTML=lista.map(p=>{
+    const col=fc(p.finId);
+    const savedDate=p.savedAt?new Date(p.savedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    return `<div class="pc">
+      <div class="pc-top">
+        <div>
+          <div class="pc-name">${p.nome}</div>
+          <div class="pc-fin" style="color:${col};">${p.finNome} — taxa ${p.taxa}%</div>
+          ${savedDate?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">Salvo em ${savedDate}</div>`:''}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:13px;padding:4px 13px;border-radius:20px;font-weight:700;font-family:'JetBrains Mono',monospace;
+            background:${p.resultado>=0?'var(--green-bg)':'var(--red-bg)'};
+            color:${p.resultado>=0?'var(--green)':'var(--red)'};
+            border:1.5px solid ${p.resultado>=0?'var(--green-bd)':'var(--red-bd)'};">
+            ${p.resultado>=0?'+ ':'− '}${R(Math.abs(p.resultado||0))}
+          </span>
+          <button class="btn btn-sm" onclick="carregarNaCalc(${p.id})" title="Carregar na calculadora">📱 Calcular</button>
+          <button class="btn btn-d btn-sm" onclick="remProd(${p.id})">✕ Remover</button>
+        </div>
+      </div>
+      <div class="pc-grid">
+        <div class="pm"><div class="pm-l">Custo total</div><div class="pm-v warn-c">${R(p.custoTotal||0)}</div></div>
+        <div class="pm"><div class="pm-l">Tabela fin.</div><div class="pm-v">${p.finP?R(p.finP):'—'}</div></div>
+        <div class="pm"><div class="pm-l">Val. financiado</div><div class="pm-v">${R(p.valFinanc||0)}</div></div>
+        <div class="pm"><div class="pm-l">Repasse líq.</div><div class="pm-v ok">${R(p.repasse||0)}</div></div>
+        <div class="pm"><div class="pm-l">Ent. exigida</div><div class="pm-v bad">${R(p.entExig||0)}</div></div>
+        <div class="pm"><div class="pm-l">Ent. cliente</div><div class="pm-v ok">${R(p.entCli||0)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function carregarNaCalc(id){
+  const p=prods.find(x=>x.id===id);
+  if(!p) return;
+  goTab('calc');
+  setTimeout(()=>{
+    const set=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val;};
+    set('f-nome',p.nome);set('f-mf',p.mf||'');set('f-custo',p.custo||'');
+    set('f-gastos',p.gastos!=null?p.gastos:100);set('f-fin',p.finP||'');
+    set('f-ent-exig',p.entExig||0);set('f-ent-cli',p.entCli||0);
+    if(p.finId) {selFinId=p.finId;renderPills();}
+    calcNow();
+  },100);
+}
+
+function remProd(id){
+  if(!confirm('Remover produto do histórico?'))return;
+  prods=prods.filter(p=>p.id!==id);
+  salvarNoFirebase();renderHist();
+}
+
+function limparVendas(){
+  if(!vendas.length){showToast('Nenhuma venda para limpar.','blue');return;}
+  if(!confirm(`Remover TODAS as ${vendas.length} vendas registradas? Esta ação não pode ser desfeita.`))return;
+  vendas=[];nvid=1;
+  _fbClearMode=true;salvarNoFirebase();renderPay();renderReport();renderHist();renderBalanco();
+  showToast('🗑️ Todas as vendas foram removidas.','red');
+}
+
+function limparProdutos(){
+  if(!prods.length){showToast('Nenhum produto para limpar.','blue');return;}
+  if(!confirm(`Remover TODOS os ${prods.length} produtos do histórico? Esta ação não pode ser desfeita.`))return;
+  prods=[];npid=1;
+  salvarNoFirebase();renderHist();
+  showToast('🗑️ Todos os produtos foram removidos.','red');
+}
+
+function limparTudo(){
+  const total=vendas.length+prods.length;
+  if(!total){showToast('Nada para limpar.','blue');return;}
+  if(!confirm(`⚠️ ATENÇÃO: Isso irá remover ${vendas.length} venda(s) e ${prods.length} produto(s). Esta ação é irreversível. Confirma?`))return;
+  vendas=[];prods=[];nvid=1;npid=1;
+  _fbClearMode=true;salvarNoFirebase();renderPay();renderReport();renderHist();renderBalanco();
+  showToast('⚠️ Todos os dados foram removidos.','red');
+}
+
+// ═══════════════════════════════════════
+// CONFIG FINANCEIRAS
+// ═══════════════════════════════════════
+function renderCfg(){
+  const el=document.getElementById('cfg-list');
+  if(!el) return;
+  el.innerHTML=fins.map((f,i)=>{
+    const col=COLORS[i%COLORS.length];
+    return `<div class="cfg-card">
+      <div class="cfg-top">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:13px;height:13px;border-radius:50%;background:${col};box-shadow:0 0 0 3px ${col}33;"></div>
+          <input class="cfg-name-inp" type="text" value="${f.nome}" id="cfg-nome-${f.id}"
+            onchange="(function(el){var _f=fins.find(x=>x.id==${f.id});if(_f)_f.nome=el.value;renderPills();})(this)">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-p btn-sm" onclick="salvarFin(${f.id})">💾 Salvar</button>
+          <button class="btn btn-d btn-sm" onclick="remFin(${f.id})">Remover</button>
+        </div>
+      </div>
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-lbl">Taxa (%)</span>
+          <input class="cfg-inp" type="number" id="cfg-taxa-${f.id}" value="${f.taxa}" step="0.5" min="0" max="100"
+            oninput="(function(el){var _f=fins.find(x=>x.id==${f.id});if(_f){_f.taxa=parseFloat(el.value)||0;renderPills();calcNow();}})(this)">
+        </div>
+        <div>
+          <span class="cfg-lbl">Dom (dias)</span>
+          <input class="cfg-inp" type="number" id="cfg-dom-${f.id}" value="${f.prazos[0]||1}" min="1"
+            oninput="(function(el){var _f=fins.find(x=>x.id==${f.id});if(_f)_f.prazos[0]=parseInt(el.value)||1;})(this)">
+        </div>
+        <div>
+          <span class="cfg-lbl">Seg – Qui (dias)</span>
+          <input class="cfg-inp" type="number" id="cfg-sq-${f.id}" value="${f.prazos[1]||1}" min="1"
+            oninput="(function(el){var _f=fins.find(x=>x.id==${f.id});if(_f)[1,2,3,4].forEach(function(d){_f.prazos[d]=parseInt(el.value)||1;});})(this)">
+        </div>
+        <div>
+          <span class="cfg-lbl">Sexta (dias)</span>
+          <input class="cfg-inp" type="number" id="cfg-sex-${f.id}" value="${f.prazos[5]||1}" min="1"
+            oninput="(function(el){var _f=fins.find(x=>x.id==${f.id});if(_f)_f.prazos[5]=parseInt(el.value)||1;})(this)">
+        </div>
+        <div>
+          <span class="cfg-lbl">Sábado (dias)</span>
+          <input class="cfg-inp" type="number" id="cfg-sab-${f.id}" value="${f.prazos[6]||1}" min="1"
+            oninput="(function(el){var _f=fins.find(x=>x.id==${f.id});if(_f)_f.prazos[6]=parseInt(el.value)||1;})(this)">
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-xs);font-size:11px;color:var(--text2);">
+        📅 Prazos atuais:
+        ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((n,i)=>`<strong>${n}:</strong> ${f.prazos[i]??1}d`).join(' &nbsp;|&nbsp; ')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function salvarFin(id){
+  const f=fins.find(x=>x.id===id);
+  if(!f) return;
+  // Salva fins no localStorage
+  localStorage.setItem('lucrocell_fins',JSON.stringify(fins));
+  // Salva no Firebase também
+  salvarFinsFirebase();
+  showToast(`✓ ${f.nome} salva com sucesso!`,'green');
+  renderCfg(); // Atualiza preview dos prazos
+  renderPills();
+}
+
+async function salvarFinsFirebase(){
+  if(!db) return;
+  try{await db.ref('lucrocell/fins').set(fins);}
+  catch(e){console.warn('Erro ao salvar fins:',e);}
+}
+
+function addFin(){
+  fins.push({id:nfid++,nome:'Nova financeira',taxa:0,prazos:{0:1,1:1,2:1,3:1,4:1,5:3,6:2}});
+  renderCfg();renderPills();
+}
+function addFinRapido(){
+  fins.push({id:nfid++,nome:'Nova financeira',taxa:0,prazos:{0:1,1:1,2:1,3:1,4:1,5:3,6:2}});
+  renderPills();goTab('cfg');
+}
+function remFin(id){
+  if(fins.length<=1){alert('Mantenha ao menos uma financeira.');return;}
+  if(!confirm('Remover esta financeira?'))return;
+  fins=fins.filter(f=>f.id!==id);
+  if(selFinId===id) selFinId=fins[0].id;
+  localStorage.setItem('lucrocell_fins',JSON.stringify(fins));
+  salvarFinsFirebase();
+  renderCfg();renderPills();calcNow();
+}
+
+// ═══════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════
+let db=null;
+
+function fbSetStatus(msg,ok=true){
+  const el=document.getElementById('fb-status');
+  if(el) el.innerHTML=`<span style="color:${ok?'var(--green)':'var(--red)'};">${msg}</span>`;
+  const ind=document.getElementById('fb-ind');
+  if(ind){ind.className='fb-indicator '+(ok&&db?'on':'off');ind.textContent=ok&&db?'● Nuvem':'● Offline';}
+}
+
+function salvarConfFirebase(){
+  const apiKey=document.getElementById('fb-apikey').value.trim();
+  const projectId=document.getElementById('fb-projectid').value.trim();
+  const appId=document.getElementById('fb-appid').value.trim();
+  const authDomain=document.getElementById('fb-authdomain').value.trim();
+  const databaseURL=document.getElementById('fb-dburl').value.trim();
+  if(!apiKey||!projectId){alert('Preencha ao menos API Key e Project ID.');return;}
+  if(!databaseURL){alert('Cole a Database URL (começa com https:// e termina com .firebaseio.com).');return;}
+  const cfg={apiKey,authDomain:authDomain||projectId+'.firebaseapp.com',projectId,appId,databaseURL};
+  localStorage.setItem('lucrocell_fbcfg',JSON.stringify(cfg));
+  iniciarFirebase(cfg);
+}
+
+function iniciarFirebase(cfg){
+  if(typeof firebase==='undefined'){
+    db=null;
+    fbSetStatus('✕ Firebase SDK não carregado. Verifique sua conexão com a internet.',false);
+    return;
+  }
+  function _init(){
+    try{
+      firebase.initializeApp(cfg);
+      db=firebase.database();
+      fbSetStatus('✓ Firebase conectado! Carregando dados...',true);
+      carregarDoFirebase();
+    }catch(e){
+      db=null;
+      fbSetStatus('✕ Erro ao conectar: '+e.message,false);
+    }
+  }
+  if(firebase.apps.length){
+    firebase.app().delete().then(_init).catch(_init);
+  } else {
+    _init();
+  }
+}
+
+function desconectarFirebase(){
+  if(!confirm('Desconectar do Firebase? Os dados locais serão mantidos.'))return;
+  localStorage.removeItem('lucrocell_fbcfg');
+  db=null;
+  if(firebase.apps.length) firebase.app().delete().catch(()=>{});
+  fbSetStatus('Desconectado do Firebase.',false);
+  const ind=document.getElementById('fb-ind');
+  if(ind){ind.className='fb-indicator off';ind.textContent='● Offline';}
+}
+
+function fbValToArray(val){
+  if(!val) return [];
+  if(Array.isArray(val)) return val.filter(x=>x!=null&&typeof x==='object');
+  if(typeof val==='object'){
+    // Firebase armazena arrays como objetos com chaves numéricas — ordenar para manter ordem original
+    return Object.entries(val)
+      .sort(([a],[b])=>Number(a)-Number(b))
+      .map(([,v])=>v)
+      .filter(x=>x!=null&&typeof x==='object');
+  }
+  return [];
+}
+
+async function carregarDoFirebase(){
+  if(!db) return;
+  try{
+    const snapV=await db.ref('lucrocell/vendas').get();
+    if(snapV.exists()){
+      const lista=fbValToArray(snapV.val());
+      vendas=lista.map(v=>({...v,valor:parseFloat(v.valor)||0}));
+      nvid=vendas.length?Math.max(...vendas.map(v=>v.id||0))+1:1;
+    }
+    const snapP=await db.ref('lucrocell/prods').get();
+    if(snapP.exists()){
+      prods=fbValToArray(snapP.val());
+      npid=prods.length?Math.max(...prods.map(p=>p.id||0))+1:1;
+    }
+    // Carrega financeiras salvas no Firebase
+    const snapF=await db.ref('lucrocell/fins').get();
+    if(snapF.exists()){
+      const finsData=fbValToArray(snapF.val());
+      if(finsData.length){
+        fins=finsData;
+        nfid=Math.max(...fins.map(f=>f.id||0))+1;
+        // Garante prazos como objeto
+        fins.forEach(f=>{if(f.prazos&&!Array.isArray(f.prazos))f.prazos={...f.prazos};});
+      }
+    }
+    fbSetStatus('✓ Dados carregados! ('+vendas.length+' vendas, '+prods.length+' produtos)',true);
+    showToast('☁️ Dados sincronizados da nuvem!','blue');
+    renderPills();renderPay();renderHist();renderReport();renderBalanco();
+  }catch(e){
+    fbSetStatus('✕ Erro ao carregar: '+e.message,false);
+  }
+}
+
+let _saveTimer=null;
+let _fbClearMode=false; // Flag para permitir limpeza real no Firebase
+async function salvarNoFirebase(){
+  if(!db) return;
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(async()=>{
+    try{
+      // Salva vendas (nunca apaga com null se houver dados)
+      if(vendas.length>0) await db.ref('lucrocell/vendas').set(vendas);
+      else if(_fbClearMode) await db.ref('lucrocell/vendas').set(null);
+      // Salva produtos
+      if(prods.length>0) await db.ref('lucrocell/prods').set(prods);
+      else if(_fbClearMode) await db.ref('lucrocell/prods').set(null);
+      // Fins sempre salva
+      if(fins.length>0) await db.ref('lucrocell/fins').set(fins);
+      _fbClearMode=false;
+    }catch(e){
+      console.warn('Firebase save error:',e.message);
+      fbSetStatus('✕ Erro ao salvar: '+e.message,false);
+    }
+  },800);
+}
+
+async function sincronizarFirebase(){
+  if(!db){fbSetStatus('Configure o Firebase primeiro.',false);return;}
+  fbSetStatus('Sincronizando...',true);
+  clearTimeout(_saveTimer);
+  try{
+    // Nunca apaga com null numa sincronização manual — apenas atualiza
+    if(vendas.length>0) await db.ref('lucrocell/vendas').set(vendas);
+    if(prods.length>0) await db.ref('lucrocell/prods').set(prods);
+    if(fins.length>0) await db.ref('lucrocell/fins').set(fins);
+    const hora=new Date().toLocaleTimeString('pt-BR');
+    fbSetStatus('✓ Sincronizado em '+hora,true);
+    showToast('✓ Sincronizado às '+hora,'green');
+    renderPills();renderPay();renderHist();renderReport();renderBalanco();
+  }catch(e){fbSetStatus('✕ Erro ao sincronizar: '+e.message,false);}
+}
+
+function imprimirPDF(){window.print();}
+
+function imprimirRelatorio(){
+  const mes=document.getElementById('rpt-mes')?.value||'';
+  const cidade=document.getElementById('rpt-cidade')?.value||'Todas';
+  const finFlt=document.getElementById('rpt-fin')?.value||'Todas';
+  const mesLabel=mes?new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'Todos os períodos';
+  const ptitle=document.getElementById('print-report-title');
+  const pdate=document.getElementById('print-report-date');
+  let titulo=`Relatório Contábil de Vendas — ${mesLabel}`;
+  if(cidade!=='Todas') titulo+=` · ${cidade}`;
+  if(finFlt!=='Todas') titulo+=` · ${finFlt}`;
+  if(ptitle) ptitle.textContent=titulo;
+  if(pdate) pdate.textContent=`Emitido em ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})} às ${new Date().toLocaleTimeString('pt-BR')}`;
+  // Salva qual tab estava ativa antes de imprimir
+  const tabAnterior=document.querySelector('.pane.active')?.id?.replace('tab-','');
+  renderReport();
+  document.querySelectorAll('.pane').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-report').classList.add('active');
+  setTimeout(()=>{
+    window.print();
+    // Restaura o tab anterior após a impressão
+    if(tabAnterior) setTimeout(()=>goTab(tabAnterior),100);
+  },300);
+}
+
+function imprimirBalanco(){
+  const mes=document.getElementById('bal-mes')?.value||'';
+  const mesLabel=mes?new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'Todos os períodos';
+  const ptitle=document.getElementById('print-balanco-title');
+  const pdate=document.getElementById('print-balanco-date');
+  if(ptitle) ptitle.textContent=`Balanço Mensal — ${mesLabel}`;
+  if(pdate) pdate.textContent=`Emitido em ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})} às ${new Date().toLocaleTimeString('pt-BR')}`;
+  // Salva qual tab estava ativa antes de imprimir
+  const tabAnterior=document.querySelector('.pane.active')?.id?.replace('tab-','');
+  renderBalanco();
+  document.querySelectorAll('.pane').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-balanco').classList.add('active');
+  setTimeout(()=>{
+    window.print();
+    // Restaura o tab anterior após a impressão
+    if(tabAnterior) setTimeout(()=>goTab(tabAnterior),100);
+  },300);
+}
+
+// ═══════════════════════════════════════
+// BALANÇO MENSAL
+// ═══════════════════════════════════════
+function renderBalanco(){
+  const mes=document.getElementById('bal-mes')?.value||'';
+  const el=document.getElementById('balanco-content');
+  if(!el) return;
+
+  let filtrado=vendas.slice();
+  if(mes) filtrado=filtrado.filter(v=>v.dataVenda&&v.dataVenda.startsWith(mes));
+
+  const totalValor=filtrado.reduce((s,v)=>s+(v.valor||0),0);
+  const qtVendas=filtrado.length;
+  const recebidos=filtrado.filter(v=>v.recebido);
+  const pendentes=filtrado.filter(v=>!v.recebido);
+  const totalRecebido=recebidos.reduce((s,v)=>s+(v.valor||0),0);
+  const totalPendente=pendentes.reduce((s,v)=>s+(v.valor||0),0);
+
+  // Por dia do mês (calendário) — deve ser calculado ANTES das médias
+  const porDia={};
+  filtrado.forEach(v=>{if(v.dataVenda){if(!porDia[v.dataVenda])porDia[v.dataVenda]={qt:0,valor:0};porDia[v.dataVenda].qt++;porDia[v.dataVenda].valor+=v.valor||0;}});
+
+  // Média por dia — usa apenas dias com vendas (média real) e também média pelo mês
+  const diasComVendas=Object.keys(porDia).length;
+  const diasNoMes=mes?new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1]),0).getDate():30;
+  const mediaDiaReal=diasComVendas>0?(totalValor/diasComVendas):0;   // média nos dias que houve venda
+  const mediaDiaMes=diasNoMes>0?(totalValor/diasNoMes):0;             // média sobre todos os dias do mês
+  const mediaSemana=mediaDiaMes*7;
+
+  // Por cidade
+  const porCidade={};
+  CIDADES.forEach(c=>{porCidade[c]={qt:0,valor:0};});
+  filtrado.forEach(v=>{if(porCidade[v.cidade]){porCidade[v.cidade].qt++;porCidade[v.cidade].valor+=v.valor||0;}});
+
+  // Por financeira (com recebido e pendente separados)
+  const porFin={};
+  filtrado.forEach(v=>{
+    const fn=v.finNome||'Sem financeira';
+    if(!porFin[fn]) porFin[fn]={qt:0,valor:0,recebido:0,pendente:0};
+    porFin[fn].qt++;
+    porFin[fn].valor+=v.valor||0;
+    if(v.recebido) porFin[fn].recebido+=v.valor||0;
+    else porFin[fn].pendente+=v.valor||0;
+  });
+
+  // Por semana (com período e colunas contábeis)
+  const porSemana={};
+  filtrado.forEach(v=>{
+    if(!v.dataVenda) return;
+    const d=parseDateStr(v.dataVenda);
+    if(!d) return;
+    const wi=getWeekInfo(d);
+    const key=d.getFullYear()+'_S'+wi.num;
+    if(!porSemana[key])porSemana[key]={qt:0,valor:0,recebido:0,pendente:0,label:wi.label,range:wi.range,num:wi.num};
+    porSemana[key].qt++;porSemana[key].valor+=v.valor||0;
+    if(v.recebido)porSemana[key].recebido+=v.valor||0;
+    else porSemana[key].pendente+=v.valor||0;
+  });
+
+  const mesLabel=mes?new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).toUpperCase():'TODOS OS PERÍODOS';
+
+  // Banner principal
+  const banner=`<div class="bal-banner" id="bal-print-banner">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div class="bal-banner-title">LucroCell — Controladoria</div>
+        <div class="bal-banner-mes">${mesLabel}</div>
+        <div style="font-size:12px;opacity:.6;margin-top:4px;">Gerado em ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})} às ${new Date().toLocaleTimeString('pt-BR')}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.1em;">Volume Total</div>
+        <div style="font-size:38px;font-weight:900;font-family:'JetBrains Mono',monospace;letter-spacing:-.03em;">${R(totalValor)}</div>
+      </div>
+    </div>
+    <div class="bal-banner-stats">
+      <div class="bal-banner-stat"><div class="bbs-l">Aparelhos vendidos</div><div class="bbs-v">${qtVendas}</div></div>
+      <div class="bal-banner-stat"><div class="bbs-l">Já recebidos</div><div class="bbs-v" style="color:#86efac;">${R(totalRecebido)}</div></div>
+      <div class="bal-banner-stat"><div class="bbs-l">A receber</div><div class="bbs-v" style="color:#fcd34d;">${R(totalPendente)}</div></div>
+      <div class="bal-banner-stat"><div class="bbs-l">Média/dia (dias com venda)</div><div class="bbs-v">${R(mediaDiaReal)}</div></div>
+      <div class="bal-banner-stat"><div class="bbs-l">Média/dia (mês cheio)</div><div class="bbs-v">${R(mediaDiaMes)}</div></div>
+      <div class="bal-banner-stat"><div class="bbs-l">Média/semana</div><div class="bbs-v">${R(mediaSemana)}</div></div>
+      <div class="bal-banner-stat"><div class="bbs-l">Dias c/ vendas</div><div class="bbs-v">${diasComVendas}</div></div>
+    </div>
+  </div>`;
+
+  // KPIs
+  const melhorCidade=Object.entries(porCidade).sort((a,b)=>b[1].valor-a[1].valor)[0];
+  const melhorFin=Object.entries(porFin).sort((a,b)=>b[1].valor-a[1].valor)[0];
+  const kpis=`<div class="bal-kpi-grid">
+    <div class="bal-kpi blue">
+      <div class="bk-lbl">📱 Aparelhos Vendidos</div>
+      <div class="bk-val blue">${qtVendas}</div>
+      <div class="bk-sub">no mês selecionado</div>
+    </div>
+    <div class="bal-kpi green">
+      <div class="bk-lbl">💰 Total Recebido</div>
+      <div class="bk-val ok">${R(totalRecebido)}</div>
+      <div class="bk-sub">${recebidos.length} vendas confirmadas</div>
+    </div>
+    <div class="bal-kpi orange">
+      <div class="bk-lbl">⏳ A Receber (Pendente)</div>
+      <div class="bk-val" style="color:var(--warn);">${R(totalPendente)}</div>
+      <div class="bk-sub">${pendentes.length} vendas pendentes</div>
+    </div>
+    <div class="bal-kpi purple">
+      <div class="bk-lbl">📊 Ticket Médio</div>
+      <div class="bk-val" style="color:var(--purple);">${qtVendas?R(totalValor/qtVendas):'R$ 0,00'}</div>
+      <div class="bk-sub">por aparelho vendido</div>
+    </div>
+    <div class="bal-kpi blue">
+      <div class="bk-lbl">📅 Média Diária (dias com venda)</div>
+      <div class="bk-val blue">${R(mediaDiaReal)}</div>
+      <div class="bk-sub">${diasComVendas} dia(s) com vendas</div>
+    </div>
+    <div class="bal-kpi green">
+      <div class="bk-lbl">📅 Média Diária (mês cheio)</div>
+      <div class="bk-val ok">${R(mediaDiaMes)}</div>
+      <div class="bk-sub">sobre ${diasNoMes} dias do mês</div>
+    </div>
+    <div class="bal-kpi blue">
+      <div class="bk-lbl">🏆 Melhor Cidade</div>
+      <div class="bk-val blue" style="font-size:16px;">${melhorCidade?melhorCidade[0]:'—'}</div>
+      <div class="bk-sub">${melhorCidade?R(melhorCidade[1].valor)+' · '+melhorCidade[1].qt+' venda(s)':'sem dados'}</div>
+    </div>
+    <div class="bal-kpi purple">
+      <div class="bk-lbl">🏦 Melhor Financeira</div>
+      <div class="bk-val" style="color:var(--purple);font-size:16px;">${melhorFin?melhorFin[0]:'—'}</div>
+      <div class="bk-sub">${melhorFin?R(melhorFin[1].valor)+' · '+melhorFin[1].qt+' venda(s)':'sem dados'}</div>
+    </div>
+  </div>`;
+
+  // Tabela por cidade
+  const tblCidade=`<div class="bal-card">
+    <div class="bal-card-hdr"><span>🏙️ Resultado por Cidade</span><span class="mono ok">${R(totalValor)}</span></div>
+    <div class="tbl-wrap"><table class="bal-tbl">
+      <thead><tr><th>Cidade</th><th>Aparelhos</th><th>Volume (R$)</th><th>Ticket Médio</th><th>% do Total</th><th>Recebido</th><th>Pendente</th></tr></thead>
+      <tbody>
+        ${CIDADES.map(c=>{
+          const cd=porCidade[c]||{qt:0,valor:0};
+          const recC=filtrado.filter(v=>v.cidade===c&&v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+          const penC=filtrado.filter(v=>v.cidade===c&&!v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+          const pct=totalValor>0?(cd.valor/totalValor*100):0;
+          const col=CIDADE_COLORS[c]||'#888';
+          return `<tr>
+            <td><span style="display:flex;align-items:center;gap:7px;"><span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block;"></span><strong>${c}</strong></span></td>
+            <td class="mono" style="font-weight:700;">${cd.qt}</td>
+            <td class="mono ok" style="font-weight:700;">${R(cd.valor)}</td>
+            <td class="mono">${cd.qt?R(cd.valor/cd.qt):'—'}</td>
+            <td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;"><div style="width:${pct.toFixed(1)}%;height:100%;background:${col};border-radius:3px;"></div></div><span class="mono" style="font-size:11px;">${pct.toFixed(1)}%</span></div></td>
+            <td class="mono ok">${R(recC)}</td>
+            <td class="mono warn-c">${R(penC)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td><strong>TOTAL</strong></td>
+        <td class="mono"><strong>${qtVendas}</strong></td>
+        <td class="mono ok"><strong>${R(totalValor)}</strong></td>
+        <td class="mono"><strong>${qtVendas?R(totalValor/qtVendas):'—'}</strong></td>
+        <td class="mono"><strong>100%</strong></td>
+        <td class="mono ok"><strong>${R(totalRecebido)}</strong></td>
+        <td class="mono warn-c"><strong>${R(totalPendente)}</strong></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+
+  // Tabela por financeira
+  const tblFin=`<div class="bal-card">
+    <div class="bal-card-hdr"><span>🏦 Resultado por Financeira</span></div>
+    <div class="tbl-wrap"><table class="bal-tbl">
+      <thead><tr><th>Financeira</th><th>Aparelhos</th><th>Volume (R$)</th><th>Ticket Médio</th><th>% do Total</th></tr></thead>
+      <tbody>
+        ${Object.entries(porFin).sort((a,b)=>b[1].valor-a[1].valor).map(([fn,fd],i)=>{
+          const finObj=fins.find(f=>f.nome===fn);
+          const col=finObj?fc(finObj.id):COLORS[i%COLORS.length];
+          const pct=totalValor>0?(fd.valor/totalValor*100):0;
+          return `<tr>
+            <td><span style="display:flex;align-items:center;gap:7px;"><span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block;"></span><strong>${fn}</strong></span></td>
+            <td class="mono" style="font-weight:700;">${fd.qt}</td>
+            <td class="mono ok" style="font-weight:700;">${R(fd.valor)}</td>
+            <td class="mono">${fd.qt?R(fd.valor/fd.qt):'—'}</td>
+            <td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;"><div style="width:${pct.toFixed(1)}%;height:100%;background:${col};border-radius:3px;"></div></div><span class="mono" style="font-size:11px;">${pct.toFixed(1)}%</span></div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td><strong>TOTAL</strong></td>
+        <td class="mono"><strong>${qtVendas}</strong></td>
+        <td class="mono ok"><strong>${R(totalValor)}</strong></td>
+        <td class="mono"><strong>${qtVendas?R(totalValor/qtVendas):'—'}</strong></td>
+        <td class="mono"><strong>100%</strong></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+
+  // Tabela por semana (contábil com período e recebido/pendente)
+  const tblSemana=Object.keys(porSemana).length?`<div class="bal-card">
+    <div class="bal-card-hdr"><span>📅 Resultado por Semana</span><span class="mono ok">${R(totalValor)}</span></div>
+    <div class="tbl-wrap"><table class="bal-tbl">
+      <thead><tr><th>Semana</th><th>Período</th><th>Aparelhos</th><th>Volume (R$)</th><th>Recebido</th><th>Pendente</th><th>Ticket Médio</th></tr></thead>
+      <tbody>
+        ${Object.values(porSemana).sort((a,b)=>a.num-b.num).map(sw=>`<tr>
+          <td><strong>${sw.label}</strong></td>
+          <td class="mono" style="font-size:11px;color:var(--text2);">${sw.range}</td>
+          <td class="mono" style="font-weight:700;">${sw.qt}</td>
+          <td class="mono ok" style="font-weight:700;">${R(sw.valor)}</td>
+          <td class="mono" style="color:var(--green);font-weight:600;">${R(sw.recebido)}</td>
+          <td class="mono" style="color:var(--warn);font-weight:600;">${R(sw.pendente)}</td>
+          <td class="mono">${sw.qt>0?R(sw.valor/sw.qt):'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="2"><strong>TOTAL</strong></td>
+        <td class="mono"><strong>${qtVendas}</strong></td>
+        <td class="mono ok"><strong>${R(totalValor)}</strong></td>
+        <td class="mono" style="color:var(--green);"><strong>${R(totalRecebido)}</strong></td>
+        <td class="mono" style="color:var(--warn);"><strong>${R(totalPendente)}</strong></td>
+        <td class="mono"><strong>${qtVendas?R(totalValor/qtVendas):'—'}</strong></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`:'';
+
+  // Calendário do mês
+  let calHtml='';
+  if(mes){
+    const [ano,mNum]=mes.split('-').map(Number);
+    const primeiroDia=new Date(ano,mNum-1,1).getDay();
+    const ultimoDia=new Date(ano,mNum,0).getDate();
+    const dias=[];
+    for(let i=0;i<primeiroDia;i++) dias.push(null);
+    for(let d=1;d<=ultimoDia;d++) dias.push(d);
+    const semNomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    calHtml=`<div class="bal-card" style="margin-bottom:1.25rem;">
+      <div class="bal-card-hdr"><span>📆 Calendário de Vendas — ${mesLabel}</span></div>
+      <div style="padding:1rem;">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;">
+          ${semNomes.map(s=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text3);padding:4px;">${s}</div>`).join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">
+          ${dias.map(d=>{
+            if(!d) return '<div></div>';
+            const key=mes+'-'+String(d).padStart(2,'0');
+            const dd=porDia[key];
+            const _tn=new Date();
+            const todayKey=_tn.getFullYear()+'-'+String(_tn.getMonth()+1).padStart(2,'0')+'-'+String(_tn.getDate()).padStart(2,'0');
+            const isHoje=(key===todayKey);
+            return `<div style="background:${dd?'var(--acc-lt)':isHoje?'#fef9c3':'var(--bg3)'};border:1.5px solid ${dd?'var(--accent)':isHoje?'#fbbf24':'var(--border)'};border-radius:8px;padding:6px 4px;text-align:center;min-height:52px;">
+              <div style="font-size:11px;font-weight:${isHoje?'800':'700'};color:${isHoje?'#b45309':dd?'var(--accent)':'var(--text2)'};">${d}</div>
+              ${dd?`<div style="font-size:10px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;">${R(dd.valor)}</div>
+              <div style="font-size:9px;color:var(--text2);">${dd.qt} apar.</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if(!filtrado.length){
+    el.innerHTML=`<div class="bal-banner"><div class="bal-banner-title">LucroCell — Controladoria</div><div class="bal-banner-mes">${mesLabel}</div></div><div class="card" style="color:var(--text2);text-align:center;padding:2rem;">Nenhuma venda registrada neste período. Registre vendas na aba <strong>Recebimentos</strong>.</div>`;
+    return;
+  }
+
+  // ── Tabela Consolidada de Financeiras para Impressão Contábil ──
+  const finConsolidado=`<div class="bal-card" style="border-color:var(--accent);margin-bottom:1.25rem;">
+    <div class="bal-card-hdr" style="background:var(--accent);color:#fff;">
+      <span>📊 RELATÓRIO MENSAL CONSOLIDADO — ${mesLabel}</span>
+      <span class="mono" style="color:#86efac;">${R(totalValor)}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1.5px solid var(--border);">
+      <div style="padding:1.25rem 1.5rem;border-right:1px solid var(--border);">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📱 Aparelhos Vendidos no Mês</div>
+        <div style="font-size:36px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--accent);">${qtVendas}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;">unidades vendidas</div>
+      </div>
+      <div style="padding:1.25rem 1.5rem;border-right:1px solid var(--border);">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">💰 Valor Total Recebido</div>
+        <div style="font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--green);">${R(totalValor)}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;">✓ ${R(totalRecebido)} confirmado · ⏳ ${R(totalPendente)} pendente</div>
+      </div>
+      <div style="padding:1.25rem 1.5rem;">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">📅 Desempenho por Período</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Média/dia (dias ativos): <span class="mono" style="color:var(--accent);">${R(mediaDiaReal)}</span></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Média/dia (mês cheio): <span class="mono">${R(mediaDiaMes)}</span></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);">Média/semana: <span class="mono">${R(mediaSemana)}</span></div>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="bal-tbl">
+      <thead>
+        <tr style="background:var(--bg3);">
+          <th colspan="6" style="text-align:center;padding:10px;font-size:11px;letter-spacing:.1em;color:var(--text2);">VENDAS POR FINANCEIRA — DETALHAMENTO CONTÁBIL</th>
+        </tr>
+        <tr><th>Financeira</th><th>📱 Aparelhos Vendidos</th><th>Valor Total (R$)</th><th>Recebido (R$)</th><th>Pendente (R$)</th><th>Ticket Médio (R$)</th></tr>
+      </thead>
+      <tbody>
+        ${Object.entries(porFin).sort((a,b)=>b[1].qt-a[1].qt).map(([fn,fd],i)=>{
+          const finObj=fins.find(f=>f.nome===fn);
+          const col=finObj?fc(finObj.id):COLORS[i%COLORS.length];
+          const recFin=filtrado.filter(v=>v.finNome===fn&&v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+          const penFin=filtrado.filter(v=>v.finNome===fn&&!v.recebido).reduce((s,v)=>s+(v.valor||0),0);
+          return `<tr>
+            <td><span style="display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border-radius:50%;background:${col};display:inline-block;flex-shrink:0;"></span><strong style="font-size:14px;">${fn}</strong></span></td>
+            <td class="mono" style="font-weight:900;font-size:18px;color:${col};text-align:center;">${fd.qt}</td>
+            <td class="mono ok" style="font-weight:700;font-size:14px;">${R(fd.valor)}</td>
+            <td class="mono" style="color:var(--green);font-weight:600;">${R(recFin)}</td>
+            <td class="mono" style="color:var(--warn);font-weight:600;">${R(penFin)}</td>
+            <td class="mono">${fd.qt?R(fd.valor/fd.qt):'—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td style="padding:12px 14px;"><strong style="font-size:13px;">TOTAL GERAL</strong></td>
+        <td class="mono" style="padding:12px 14px;font-weight:900;font-size:20px;color:var(--accent);text-align:center;">${qtVendas}</td>
+        <td class="mono ok" style="padding:12px 14px;font-weight:700;font-size:15px;">${R(totalValor)}</td>
+        <td class="mono" style="padding:12px 14px;font-weight:700;color:var(--green);">${R(totalRecebido)}</td>
+        <td class="mono" style="padding:12px 14px;font-weight:700;color:var(--warn);">${R(totalPendente)}</td>
+        <td class="mono" style="padding:12px 14px;font-weight:700;">${qtVendas?R(totalValor/qtVendas):'—'}</td>
+      </tr></tfoot>
+    </table></div>
+    <div style="padding:.75rem 1.25rem;font-size:11px;color:var(--text2);border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+      <span>Dias com vendas: <strong>${diasComVendas} de ${diasNoMes}</strong></span>
+      <span>Ticket médio geral: <strong class="mono">${qtVendas?R(totalValor/qtVendas):'—'}</strong></span>
+      <span>Gerado: <strong>${new Date().toLocaleString('pt-BR')}</strong></span>
+    </div>
+  </div>`;
+
+  el.innerHTML=banner+kpis+finConsolidado+calHtml+tblCidade+tblFin+tblSemana;
+}
+
+function getWeekNumber(d){
+  const date=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const dayNum=date.getUTCDay()||7;
+  date.setUTCDate(date.getUTCDate()+4-dayNum);
+  const yearStart=new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date-yearStart)/86400000)+1)/7);
+}
+
+// Retorna {num, label, inicio, fim} para a semana de uma data
+function getWeekInfo(d){
+  const num=getWeekNumber(d);
+  // Início da semana (segunda-feira)
+  const dow=d.getDay()||7; // 1=seg, 7=dom
+  const inicio=new Date(d);
+  inicio.setDate(d.getDate()-(dow-1));
+  const fim=new Date(inicio);
+  fim.setDate(inicio.getDate()+6);
+  const fmt=(dt)=>dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  return {num, label:`Semana ${num}`, inicio, fim, range:`${fmt(inicio)} – ${fmt(fim)}`};
+}
+
+// IA — Análise de custos mensal/semanal/diário
+async function gerarAnaliseIA(){
+  const mes=document.getElementById('bal-mes')?.value||'';
+  const msgs=document.getElementById('ia-balanco-msgs');
+  // Usa o botão correto de análise automática (não o de envio de mensagem)
+  const btn=document.getElementById('ia-analise-btn');
+  const apiKey=getApiKey();
+  if(btn) btn.disabled=true; // Desabilita imediatamente para evitar cliques duplos
+  if(!apiKey){
+    msgs.innerHTML+='<div class="ia-msg sys" style="color:var(--red);">Configure a chave de API em <strong>Configurações</strong>.</div>';
+    if(btn) btn.disabled=false;
+    return;
+  }
+
+  let filtrado=vendas.slice();
+  if(mes) filtrado=filtrado.filter(v=>v.dataVenda&&v.dataVenda.startsWith(mes));
+
+  const totalValor=filtrado.reduce((s,v)=>s+(v.valor||0),0);
+  const qtVendas=filtrado.length;
+  const diasComVendasIA=new Set(filtrado.map(v=>v.dataVenda).filter(Boolean)).size;
+  const diasNoMesIA=mes?new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1]),0).getDate():30;
+  const mediaDiaRealIA=diasComVendasIA>0?(totalValor/diasComVendasIA):0;
+  const mediaDiaMesIA=diasNoMesIA>0?(totalValor/diasNoMesIA):0;
+  const mediaSemanaIA=mediaDiaMesIA*7;
+
+  const porCidade={};
+  CIDADES.forEach(c=>{porCidade[c]={qt:0,valor:0};});
+  filtrado.forEach(v=>{if(porCidade[v.cidade]){porCidade[v.cidade].qt++;porCidade[v.cidade].valor+=v.valor||0;}});
+
+  const porFin={};
+  filtrado.forEach(v=>{if(!porFin[v.finNome])porFin[v.finNome]={qt:0,valor:0};porFin[v.finNome].qt++;porFin[v.finNome].valor+=v.valor||0;});
+
+  const mesLabel=mes?new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'período geral';
+  const loadId='ia-load-'+Date.now();
+  const ctx=`Dados da loja LucroCell — ${mesLabel}:
+Total de aparelhos vendidos: ${qtVendas}
+Volume total: R$ ${totalValor.toFixed(2)}
+Dias com vendas: ${diasComVendasIA} de ${diasNoMesIA} dias\nMédia por dia (dias com venda): R$ ${mediaDiaRealIA.toFixed(2)}\nMédia por dia (mês cheio): R$ ${mediaDiaMesIA.toFixed(2)}
+Média por semana: R$ ${mediaSemanaIA.toFixed(2)}
+Ticket médio por aparelho: R$ ${qtVendas?(totalValor/qtVendas).toFixed(2):'0'}
+Já recebidos: ${filtrado.filter(v=>v.recebido).length} vendas (R$ ${filtrado.filter(v=>v.recebido).reduce((s,v)=>s+(v.valor||0),0).toFixed(2)})
+Pendentes: ${filtrado.filter(v=>!v.recebido).length} vendas (R$ ${filtrado.filter(v=>!v.recebido).reduce((s,v)=>s+(v.valor||0),0).toFixed(2)})
+Por cidade: ${JSON.stringify(porCidade)}
+Por financeira: ${JSON.stringify(porFin)}`;
+
+  msgs.innerHTML+=`<div class="ia-msg usr">Gerar análise completa de ${escapeHtml(mesLabel)}</div><div class="ia-msg loading" id="${loadId}">Analisando dados...</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:`Você é um analista financeiro especializado em lojas de celular. Analise os dados da loja LucroCell e gere um relatório inteligente em português com: 1) Desempenho geral do mês, 2) Análise de custo diário e semanal, 3) Qual cidade e financeira performaram melhor, 4) Pontos de atenção e oportunidades de melhoria, 5) Previsão e metas sugeridas. Seja direto, use números e seja prático. Use emojis para organizar.`,
+        messages:[{role:'user',content:ctx}]})});
+    const data=await resp.json();
+    const text=data.content?.find(b=>b.type==='text')?.text||'Não foi possível gerar análise.';
+    document.getElementById(loadId).remove();
+    msgs.innerHTML+=`<div class="ia-msg sys">${text.replace(/\n/g,'<br>')}</div>`;
+  }catch(e){
+    const el2=document.getElementById(loadId);if(el2)el2.remove();
+    msgs.innerHTML+=`<div class="ia-msg sys" style="color:var(--red);">Erro ao conectar com a IA.</div>`;
+  }
+  if(btn) btn.disabled=false;
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+async function sendIABalanco(){
+  const inp=document.getElementById('ia-bal-input');
+  const msg=inp.value.trim();
+  if(!msg) return;
+  inp.value='';
+  const btn=document.getElementById('ia-bal-btn');
+  btn.disabled=true;
+  const msgs=document.getElementById('ia-balanco-msgs');
+  const apiKey=getApiKey();
+
+  const mes=document.getElementById('bal-mes')?.value||'';
+  let filtrado=vendas.slice();
+  if(mes) filtrado=filtrado.filter(v=>v.dataVenda&&v.dataVenda.startsWith(mes));
+  const totalValor=filtrado.reduce((s,v)=>s+(v.valor||0),0);
+  const qtVendas=filtrado.length;
+  const mesLabel=mes?new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'período geral';
+  const ctx=`Loja LucroCell — ${mesLabel}: ${qtVendas} aparelhos vendidos, total R$ ${totalValor.toFixed(2)}.`;
+
+  const loadId='ia-load-'+Date.now();
+  msgs.innerHTML+=`<div class="ia-msg usr">${escapeHtml(msg)}</div><div class="ia-msg loading" id="${loadId}">Analisando...</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+
+  if(!apiKey){
+    document.getElementById(loadId).remove();
+    msgs.innerHTML+='<div class="ia-msg sys" style="color:var(--red);">Configure a chave de API em <strong>Configurações</strong>.</div>';
+    btn.disabled=false;return;
+  }
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
+        system:`Você é analista financeiro da loja LucroCell. ${ctx} Responda em português, de forma prática.`,
+        messages:[{role:'user',content:msg}]})});
+    const data=await resp.json();
+    const text=data.content?.find(b=>b.type==='text')?.text||'Sem resposta.';
+    document.getElementById(loadId).remove();
+    msgs.innerHTML+=`<div class="ia-msg sys">${text.replace(/\n/g,'<br>')}</div>`;
+  }catch(e){
+    const el2=document.getElementById(loadId);if(el2)el2.remove();
+    msgs.innerHTML+=`<div class="ia-msg sys" style="color:var(--red);">Erro de conexão.</div>`;
+  }
+  btn.disabled=false;msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+(function init(){
+  // Atualiza data no rodapé de impressão
+  const footerDate=document.getElementById('footer-date');
+  if(footerDate) footerDate.textContent=new Date().toLocaleString('pt-BR');
+
+  // Carrega fins do localStorage (persistência local)
+  const savedFins=localStorage.getItem('lucrocell_fins');
+  if(savedFins){
+    try{
+      const parsed=JSON.parse(savedFins);
+      if(parsed&&parsed.length){
+        fins=parsed;
+        nfid=Math.max(...fins.map(f=>f.id||0))+1;
+      }
+    }catch(e){console.warn('Erro ao restaurar fins:',e);}
+  }
+
+  const pvd=document.getElementById('pv-data');
+  if(pvd) pvd.valueAsDate=new Date();
+  // Marcar versão do sistema
+  document.title='LucroCell v5 — Controladoria';
+  const rptmes=document.getElementById('rpt-mes');
+  if(rptmes){const n=new Date();rptmes.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
+  const balmes=document.getElementById('bal-mes');
+  if(balmes){const n=new Date();balmes.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
+
+  renderPills();calcNow();renderCityTabs();
+
+  // Restaura chave IA
+  const savedKey=localStorage.getItem('lucrocell_apikey');
+  if(savedKey){const inp=document.getElementById('api-key-inp');if(inp)inp.value=savedKey;}
+
+  // Restaura e conecta Firebase
+  const fbcfg=localStorage.getItem('lucrocell_fbcfg');
+  if(fbcfg){
+    try{
+      const cfg=JSON.parse(fbcfg);
+      const map={'fb-apikey':'apiKey','fb-projectid':'projectId','fb-appid':'appId','fb-authdomain':'authDomain','fb-dburl':'databaseURL'};
+      Object.entries(map).forEach(([elId,key])=>{const el=document.getElementById(elId);if(el)el.value=cfg[key]||'';});
+      iniciarFirebase(cfg);
+    }catch(e){console.warn('Erro ao restaurar Firebase:',e);}
+  }
+})();
+</script>
+</body>
+</html>
